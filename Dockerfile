@@ -1,5 +1,7 @@
 # --- build the frontend ---
 FROM node:22-alpine AS web
+# git is needed to install the make-pwa dependency from GitHub.
+RUN apk add --no-cache git
 WORKDIR /web
 COPY web/package*.json ./
 RUN npm ci
