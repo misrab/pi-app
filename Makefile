@@ -2,28 +2,43 @@
 
 ADDR ?= :8080
 
-.PHONY: dev build docker tidy test
+.PHONY: dev dev-web dev-server build build-web web-install free-port docker dev-docker tidy test
 
-# Free the dev port if something's already bound to it.
+# --- local development ------------------------------------------------------
+
+# Full dev: Go backend on :8080 + Vite dev server on :5173 (proxies /ws).
+# Open http://localhost:5173. Requires `pi` on PATH.
+dev: web-install free-port
+	@echo "backend :8080  ·  ui http://localhost:5173"
+	@(go run ./cmd/server --addr :8080 --no-session &) && cd web && npm run dev
+
+# Backend only (serves the prebuilt embedded UI on :8080).
+dev-server: free-port
+	go run ./cmd/server --addr $(ADDR) --no-session
+
+web-install:
+	@cd web && [ -d node_modules ] || npm install
+
 free-port:
 	@lsof -ti$(ADDR) | xargs kill -9 2>/dev/null || true
 
-# Run locally against your installed pi + default config. Open http://localhost:8080
-# Uses your real ~/.pi/agent config (read), but does NOT persist sessions.
-dev: free-port
-	go run ./cmd/server --addr $(ADDR) --no-session
+# --- production build -------------------------------------------------------
 
-build:
+# Build frontend into internal/web/dist, then the single Go binary.
+build: build-web
 	CGO_ENABLED=0 go build -o bin/pi-app ./cmd/server
+
+build-web: web-install
+	cd web && npm run build
+
+# --- docker -----------------------------------------------------------------
 
 docker:
 	docker build -t pi-app .
 
-# Isolated local run: pi only touches the container, not your laptop.
-# Rebuilds image (npm layer is cached, so it's fast after the first time).
 dev-docker: docker free-port
 	docker run --rm -it -p $(patsubst :%,%,$(ADDR)):8080 \
-		-e ANTHROPIC_API_KEY \
+		$(if $(wildcard pi.env),--env-file pi.env) \
 		pi-app --no-session
 
 tidy:

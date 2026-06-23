@@ -1,0 +1,108 @@
+.transcript {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.empty {
+  margin: auto;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.bubble {
+  padding: 11px 14px;
+  border-radius: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  font-size: 0.94rem;
+  max-width: 92%;
+}
+
+.user {
+  background: #243049;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+.assistant {
+  background: var(--panel);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.thinking {
+  background: transparent;
+  border: 1px dashed var(--panel-2);
+  color: var(--think);
+  font-style: italic;
+  font-size: 0.85rem;
+  align-self: flex-start;
+}
+
+.tool {
+  background: #17132b;
+  border: 1px solid #2e2452;
+  align-self: stretch;
+  max-width: 100%;
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-size: 0.8rem;
+}
+
+.toolHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolName {
+  color: var(--tool);
+  font-weight: 600;
+}
+
+.toolPending {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.toolArgs {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-top: 6px;
+  color: #8b94a6;
+}
+
+.toolResult {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #2e2452;
+  color: #b9c2d0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.toolError {
+  color: var(--error);
+}
+
+.spinner {
+  align-self: flex-start;
+  color: var(--muted);
+  font-size: 1.2rem;
+  padding: 0 14px;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}

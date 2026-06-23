@@ -1,0 +1,54 @@
+:root {
+  --bg: #0f1117;
+  --panel: #1e2130;
+  --panel-2: #262a3a;
+  --muted: #64748b;
+  --text: #e2e8f0;
+  --accent: #7c9cff;
+  --tool: #a78bfa;
+  --think: #5b647a;
+  --error: #f87171;
+  --ok: #22c55e;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  overscroll-behavior: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+textarea {
+  font: inherit;
+}

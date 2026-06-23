@@ -1,0 +1,84 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(8px + var(--safe-top)) 12px 8px;
+  border-bottom: 1px solid var(--panel-2);
+  background: var(--bg);
+}
+
+.session {
+  width: 40px;
+  height: 40px;
+  font-size: 1.2rem;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.model {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--panel);
+  border-radius: 10px;
+  color: var(--text);
+  max-width: 60%;
+}
+
+.modelName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.think {
+  font-size: 0.68rem;
+  color: var(--accent);
+  background: #1a2138;
+  padding: 1px 6px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.caret {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sessionName {
+  font-size: 0.78rem;
+  color: var(--muted);
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.open {
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
+}
+.connecting {
+  background: #eab308;
+}
+.closed {
+  background: var(--error);
+}

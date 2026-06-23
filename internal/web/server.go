@@ -5,16 +5,13 @@ package web
 
 import (
 	"context"
-	"embed"
+	"io/fs"
 	"log/slog"
 	"net/http"
 
 	"github.com/coder/websocket"
 	"github.com/misrab/pi-app/internal/pi"
 )
-
-//go:embed static/*
-var staticFS embed.FS
 
 // Server serves the UI and WebSocket bridge.
 type Server struct {
@@ -33,22 +30,36 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"healthy":true}`))
 	})
-	mux.HandleFunc("/", s.serveIndex)
+	mux.Handle("/", s.spaHandler())
 	return mux
 }
 
-func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-	data, err := staticFS.ReadFile("static/index.html")
+// spaHandler serves the embedded Vite build, falling back to index.html for
+// client-side routes.
+func (s *Server) spaHandler() http.Handler {
+	sub, err := fs.Sub(dist, "dist")
 	if err != nil {
-		http.Error(w, "ui not found", http.StatusInternalServerError)
-		return
+		panic(err)
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(data)
+	fileServer := http.FileServer(http.FS(sub))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := fs.Stat(sub, trimLeadingSlash(r.URL.Path)); err != nil {
+			// not a real file -> serve index.html (SPA fallback)
+			r.URL.Path = "/"
+		}
+		fileServer.ServeHTTP(w, r)
+	})
+}
+
+func trimLeadingSlash(p string) string {
+	if p == "/" {
+		return "."
+	}
+	if len(p) > 0 && p[0] == '/' {
+		return p[1:]
+	}
+	return p
 }
 
 func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {

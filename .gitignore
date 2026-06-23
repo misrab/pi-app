@@ -1,6 +1,9 @@
 /bin/
+/internal/web/dist/
+/web/node_modules/
 .env
 *.env
 !*.env.example
+pi.env
 .DS_Store
 *.log
