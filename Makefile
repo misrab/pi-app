@@ -2,7 +2,7 @@
 
 ADDR ?= :8080
 
-.PHONY: dev dev-web dev-server build build-web web-install free-port docker dev-docker tidy test
+.PHONY: dev dev-web dev-server build build-web web-install free-port docker dev-docker dev-stop dev-logs tidy test
 
 # --- local development ------------------------------------------------------
 
@@ -36,17 +36,30 @@ build-web: web-install
 docker:
 	docker build -t pi-app .
 
-# Local Docker run. Stops any stale container, then seeds the container's own
-# config from your ~/.pi/agent (read-only) — portable files only. Extensions are
-# installed fresh inside the container for Linux, so macOS native binaries never
-# leak in and your host config is never mutated.
-dev-docker: docker free-port
+# Local Docker run. Detached (no -it) so killing the terminal/make doesn't
+# interfere with the container or the Docker daemon. Stops any stale container
+# first. Seeds the container's own config from your ~/.pi/agent (read-only).
+dev-docker: docker-check docker free-port
 	-docker rm -f pi-app-dev 2>/dev/null
-	docker run --rm -it --name pi-app-dev -p $(patsubst :%,%,$(ADDR)):8080 \
+	@echo "pi-app running · http://localhost:8080  ·  Ctrl+C to stop"
+	docker run --rm --name pi-app-dev -p $(patsubst :%,%,$(ADDR)):8080 \
 		$(if $(wildcard pi.env),--env-file pi.env) \
 		-v $(HOME)/.pi/agent:/seed:ro \
 		-e PI_CONFIG_SEED=/seed \
-		pi-app --no-session
+		pi-app
+
+# fail loudly if the daemon isn't running, instead of mysterious hangs
+docker-check:
+	@docker info >/dev/null 2>&1 || { \
+		echo "Docker daemon not reachable. Start Docker Desktop and try again."; \
+		exit 1; }
+
+dev-stop: docker-check
+	-docker rm -f pi-app-dev 2>/dev/null
+	@echo "stopped pi-app-dev"
+
+dev-logs: docker-check
+	docker logs -f pi-app-dev
 
 tidy:
 	go mod tidy

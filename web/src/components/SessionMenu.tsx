@@ -21,7 +21,7 @@ export function SessionMenu({ open, onClose, session }: Props) {
     if (!open) return;
     fetch("/api/sessions")
       .then((r) => r.json())
-      .then((data: SessionInfo[]) => setList(data))
+      .then((data: SessionInfo[]) => setList(data ?? []))
       .catch(() => setList([]));
   }, [open]);
 

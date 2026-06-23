@@ -49,9 +49,9 @@ function reducer(state: State, action: Action): State {
 }
 
 // messagesToBlocks rebuilds the transcript from stored messages (on resume).
-function messagesToBlocks(messages: StoredMessage[]): Block[] {
+function messagesToBlocks(messages: StoredMessage[] | null | undefined): Block[] {
   const blocks: Block[] = [];
-  for (const m of messages) {
+  for (const m of messages ?? []) {
     if (m.role === "user") {
       blocks.push({ id: nextId(), kind: "user", text: contentToText(m.content) });
     } else if (m.role === "assistant") {
@@ -243,7 +243,7 @@ export function useSession() {
   // Load the current conversation's messages into the transcript.
   const loadMessages = useCallback(async () => {
     const res = await client.request<{ messages: StoredMessage[] }>({ type: "get_messages" });
-    if (res.success && res.data) dispatch({ type: "load", messages: res.data.messages });
+    if (res.success && res.data?.messages) dispatch({ type: "load", messages: res.data.messages });
   }, [client]);
 
   const switchSession = useCallback(

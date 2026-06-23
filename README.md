@@ -83,7 +83,8 @@ make dev-docker        # http://localhost:8080
 > `~/.pi/agent` (settings, auth, memory, prompts) but never the installed
 > `git/`, `npm/`, `bin/` dirs — those hold platform-specific native binaries.
 > Extensions are installed fresh **inside** the container for Linux. Your host
-> config is mounted read-only and never mutated.
+> config is mounted read-only and never mutated. Sessions persist inside the
+> container (ephemeral; gone when it stops) so resume is testable.
 
 Production:
 
