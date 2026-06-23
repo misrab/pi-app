@@ -45,6 +45,7 @@ type ManagedSession struct {
 
 	mu       sync.Mutex
 	ring     [][]byte // last ringSize events
+	turnFrom int      // ring index of the current turn's agent_start (-1 if idle)
 	status   Status
 	attached int
 	lastSeen time.Time
@@ -78,8 +79,10 @@ func New(opts pi.Options) *Manager {
 }
 
 // Attach returns the managed session for id, spawning the pi process if it is
-// not already running. The replay slice holds buffered events the caller should
-// deliver before subscribing live. Caller must Detach when its WS closes.
+// not already running. When the session is mid-turn, the replay slice holds the
+// events of the in-flight turn (since its agent_start) so a reattaching browser
+// can render the partial response live; it is empty otherwise (committed history
+// comes from get_messages). Caller must Detach when its WS closes.
 func (m *Manager) Attach(id string, piArgs []string) (*ManagedSession, [][]byte, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -88,8 +91,12 @@ func (m *Manager) Attach(id string, piArgs []string) (*ManagedSession, [][]byte,
 		ms.mu.Lock()
 		ms.attached++
 		ms.lastSeen = time.Now()
-		replay := make([][]byte, len(ms.ring))
-		copy(replay, ms.ring)
+		var replay [][]byte
+		if ms.status == StatusRunning && ms.turnFrom >= 0 && ms.turnFrom <= len(ms.ring) {
+			tail := ms.ring[ms.turnFrom:]
+			replay = make([][]byte, len(tail))
+			copy(replay, tail)
+		}
 		ms.mu.Unlock()
 		return ms, replay, nil
 	}
@@ -110,6 +117,7 @@ func (m *Manager) Attach(id string, piArgs []string) (*ManagedSession, [][]byte,
 		id:       id,
 		proc:     proc,
 		status:   StatusIdle,
+		turnFrom: -1,
 		attached: 1,
 		lastSeen: time.Now(),
 	}
@@ -183,20 +191,30 @@ func (ms *ManagedSession) alive() bool {
 }
 
 // pump consumes the process event stream to maintain the replay ring and derive
-// status (agent_start -> running, agent_end -> idle). Ends when pi exits.
+// status (agent_start -> running, agent_end -> idle). It records the ring index
+// where the current turn began (turnFrom) so Attach can replay just the in-flight
+// turn. Ends when pi exits.
 func (ms *ManagedSession) pump(proc *pi.Session) {
 	ch, _ := proc.Subscribe()
 	for line := range ch {
 		ms.mu.Lock()
 		ms.ring = append(ms.ring, line)
-		if len(ms.ring) > ringSize {
-			ms.ring = ms.ring[len(ms.ring)-ringSize:]
+		if over := len(ms.ring) - ringSize; over > 0 {
+			ms.ring = ms.ring[over:]
+			// Shift turnFrom to track its event after trimming (clamp at 0).
+			if ms.turnFrom >= 0 {
+				if ms.turnFrom -= over; ms.turnFrom < 0 {
+					ms.turnFrom = 0
+				}
+			}
 		}
 		switch eventType(line) {
 		case "agent_start":
 			ms.status = StatusRunning
+			ms.turnFrom = len(ms.ring) - 1 // this agent_start's index
 		case "agent_end":
 			ms.status = StatusIdle
+			ms.turnFrom = -1
 			ms.lastSeen = time.Now()
 		}
 		ms.mu.Unlock()

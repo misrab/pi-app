@@ -13,18 +13,22 @@ interface Props {
 }
 
 export function SessionMenu({ open, onClose, session }: Props) {
-  const { sessionName, stats, newSession, switchSession, renameSession } = session;
+  const { sessionName, stats, newSession, switchSession, stopSession, renameSession } = session;
   const [list, setList] = useState<SessionInfo[] | null>(null); // null = loading
   const [renaming, setRenaming] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    setList(null);
-    fetch("/api/sessions")
+  const refresh = (showLoading = false) => {
+    if (showLoading) setList(null);
+    return fetch("/api/sessions")
       .then((r) => r.json())
       .then((data: SessionInfo[]) => setList(data ?? []))
       .catch(() => setList([]));
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    void refresh(true);
   }, [open]);
 
   const start = async () => {
@@ -39,6 +43,14 @@ export function SessionMenu({ open, onClose, session }: Props) {
     await switchSession(path);
     setBusy(false);
     onClose();
+  };
+
+  const stop = async (e: React.MouseEvent, path: string) => {
+    e.stopPropagation(); // don't trigger resume
+    setBusy(true);
+    await stopSession(path);
+    await refresh();
+    setBusy(false);
   };
 
   return (
@@ -64,12 +76,26 @@ export function SessionMenu({ open, onClose, session }: Props) {
             </li>
           ))}
           {list !== null && list.map((s) => (
-            <li key={s.path}>
+            <li key={s.path} className={styles.row}>
               <button className={styles.item} onClick={() => resume(s.path)} disabled={busy}>
-                <span className={styles.name}>{s.name}</span>
+                <span className={styles.name}>
+                  <StatusDot status={s.status} />
+                  {s.name}
+                </span>
                 {s.preview && s.preview !== s.name && <span className={styles.preview}>{s.preview}</span>}
                 <span className={styles.time}>{relative(s.modified)}</span>
               </button>
+              {s.status !== "stopped" && (
+                <button
+                  className={styles.stop}
+                  onClick={(e) => stop(e, s.path)}
+                  disabled={busy}
+                  aria-label="Stop session"
+                  title="Stop process"
+                >
+                  ■
+                </button>
+              )}
             </li>
           ))}
           {list !== null && list.length === 0 && <li className={styles.empty}>No saved sessions yet.</li>}
@@ -95,6 +121,11 @@ function Stats({ stats }: { stats: SessionStats }) {
       {ctx && ctx.percent != null && <Stat label="Context" value={`${ctx.percent}%`} />}
     </div>
   );
+}
+
+function StatusDot({ status }: { status: SessionInfo["status"] }) {
+  const title = status === "running" ? "running" : status === "idle" ? "idle (process alive)" : "stopped";
+  return <span className={`${styles.dot} ${styles[status]}`} title={title} aria-label={title} />;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

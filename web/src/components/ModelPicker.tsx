@@ -16,13 +16,17 @@ interface Props {
 export function ModelPicker({ open, onClose, session }: Props) {
   const { client, model, thinkingLevel, refreshState } = session;
   const [models, setModels] = useState<Model[]>([]);
+  const [enabledModels, setEnabledModels] = useState<string[] | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    client
-      .request<{ models: Model[] }>({ type: "get_available_models" })
-      .then((res) => res.success && res.data && setModels(res.data.models))
-      .catch(() => {});
+    Promise.all([
+      client.request<{ models: Model[] }>({ type: "get_available_models" }),
+      fetch("/api/settings").then((r) => r.json()),
+    ]).then(([modelsRes, settings]) => {
+      if (modelsRes.success && modelsRes.data) setModels(modelsRes.data.models);
+      if (Array.isArray(settings.enabledModels)) setEnabledModels(settings.enabledModels);
+    }).catch(() => {});
   }, [open, client]);
 
   const pick = async (m: Model) => {
@@ -38,18 +42,20 @@ export function ModelPicker({ open, onClose, session }: Props) {
   return (
     <Sheet open={open} title="Model" onClose={onClose}>
       <ul className={styles.list}>
-        {models.map((m) => (
-          <li key={`${m.provider}/${m.id}`}>
-            <button
-              className={`${styles.item} ${model?.id === m.id ? styles.active : ""}`}
-              onClick={() => pick(m)}
-            >
-              <span className={styles.name}>{m.name}</span>
-              <span className={styles.provider}>{m.provider}</span>
-              {model?.id === m.id && <span className={styles.check}>✓</span>}
-            </button>
-          </li>
-        ))}
+        {models
+          .filter((m) => !enabledModels || enabledModels.includes(`${m.provider}/${m.id}`))
+          .map((m) => (
+            <li key={`${m.provider}/${m.id}`}>
+              <button
+                className={`${styles.item} ${model?.id === m.id ? styles.active : ""}`}
+                onClick={() => pick(m)}
+              >
+                <span className={styles.name}>{m.name}</span>
+                <span className={styles.provider}>{m.provider}</span>
+                {model?.id === m.id && <span className={styles.check}>✓</span>}
+              </button>
+            </li>
+          ))}
         {models.length === 0 && (
           <li className={styles.loading}>
             {["80%","60%","70%","55%","65%"].map((w, i) => (

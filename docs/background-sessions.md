@@ -125,15 +125,29 @@ Extend the existing `SessionMenu` + `/api/sessions`:
 
 ## Phasing
 
-**Phase 1 — Persistence (core value).**
-Process pool + attach/detach + ring-buffer replay + idle reaper + max-live cap.
-Single browser, one session at a time, but it survives tab close/switch.
+**Phase 1 — Persistence (core value). ✅ DONE**
+- `pi.Session` fan-out (`Subscribe`), multi-WS per process
+- `internal/manager` process pool: Attach/Detach/Stop/List + idle reaper (30m)
+  + max-live cap (8) + 500-event ring buffer
+- `/ws?session=<id>` attaches/detaches (no kill on disconnect)
+- `GET /api/sessions` annotated with `status`+`attached`; `POST /api/sessions/stop`
+- Frontend: `RpcClient.switchTo`, unify-on-attach `switchSession`/`newSession`,
+  transcript via `get_messages` on attach
 
-**Phase 2 — Concurrency + UI.**
-Session list with live status, stop buttons, switching between multiple
-background sessions that all keep running.
+**Phase 2 — Concurrency + UI. ✅ DONE**
+- Session list shows live status dots (running/idle/stopped) + stop buttons
+- Switching to a session leaves the previous process running in the background
+- Ring-buffer replay deferred to Phase 3 (live re-attach to a streaming session)
 
-**Phase 3 — Polish.**
+**Phase 3 — Live re-attach. ✅ DONE**
+- Manager records `turnFrom` (ring index of the current turn's `agent_start`,
+  trim-adjusted); Attach returns just the in-flight turn's events when running.
+- `server.go` streams the replay tail on attach before live subscription.
+- Client buffers all events during the get_messages load window, then flushes
+  in arrival order — replay applied over committed history rebuilds the partial.
+- Result: reattaching to a streaming session renders it token-by-token live.
+
+**Phase 4 — Polish (future).**
 Pre-spawn sessions, per-session resource display, notifications when a
 background task finishes (`agent_end` while detached).
 

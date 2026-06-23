@@ -11,6 +11,8 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/coder/websocket"
 	"github.com/misrab/pi-app/internal/manager"
@@ -37,6 +39,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/ws", s.handleWS)
 	mux.HandleFunc("/api/sessions", s.handleSessions)
 	mux.HandleFunc("/api/sessions/stop", s.handleStop)
+	mux.HandleFunc("/api/settings", s.handleSettings)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"healthy":true}`))
 	})
@@ -91,6 +94,37 @@ func (s *Server) handleStop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleSettings reads settings.json from the pi config dir and returns the
+// fields the UI needs (currently just enabledModels for the model picker).
+func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Determine settings.json path. ConfigDir is empty when pi uses its default
+	// (~/.pi/agent), so fall back to the well-known default location.
+	dir := s.piOpts.ConfigDir
+	if dir == "" {
+		home, _ := os.UserHomeDir()
+		dir = filepath.Join(home, ".pi", "agent")
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "settings.json"))
+	if err != nil {
+		// No settings file — return empty object so the UI shows all models.
+		w.Write([]byte(`{}`))
+		return
+	}
+	// Forward only the fields the UI cares about.
+	var all map[string]json.RawMessage
+	if err := json.Unmarshal(data, &all); err != nil {
+		w.Write([]byte(`{}`))
+		return
+	}
+	out := map[string]json.RawMessage{}
+	if v, ok := all["enabledModels"]; ok {
+		out["enabledModels"] = v
+	}
+	_ = json.NewEncoder(w).Encode(out)
 }
 
 // spaHandler serves the embedded Vite build, falling back to index.html for
@@ -152,9 +186,12 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	} else {
 		id = "new:" + randID()
 	}
-	// replay is reserved for Phase 3 (live re-attach to a streaming session).
-	// Phase 1 reconstructs transcript history via get_messages on the client.
-	ms, _, err := s.mgr.Attach(id, piArgs)
+	// Committed history comes from get_messages on the client. When the session
+	// is mid-turn, replay holds the in-flight turn's events (since agent_start) so
+	// the browser can render the partial response live. The client buffers all
+	// events until its get_messages load completes, then flushes in arrival order,
+	// so replay applied on top of committed history reconstructs the partial.
+	ms, replay, err := s.mgr.Attach(id, piArgs)
 	if err != nil {
 		slog.Error("failed to attach session", "err", err)
 		conn.Close(websocket.StatusInternalError, "failed to attach session")
@@ -164,6 +201,12 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 
 	events, unsub := ms.Subscribe()
 	defer unsub()
+
+	for _, ev := range replay {
+		if err := conn.Write(ctx, websocket.MessageText, ev); err != nil {
+			return
+		}
+	}
 
 	// pi events -> browser (process keeps running after WS closes)
 	go func() {

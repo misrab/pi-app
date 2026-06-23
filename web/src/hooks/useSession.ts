@@ -187,15 +187,27 @@ export function useSession() {
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [sessionName, setSessionName] = useState<string | undefined>();
 
+  // On every (re)attach we rebuild the transcript from committed history
+  // (get_messages). While that async load is in flight, incoming events — which
+  // include the backend's replay of the in-flight turn — are buffered so they
+  // are not wiped by the subsequent "load" dispatch. After load resolves we
+  // flush the buffer in arrival order, reconstructing any partial response live.
+  const loading = useRef(false);
+  const buffer = useRef<Event[]>([]);
+
   // Wire up the client once.
   useEffect(() => {
     const offEvent = client.onEvent((event) => {
+      if (loading.current) {
+        buffer.current.push(event);
+        return;
+      }
       dispatch({ type: "event", event });
       if (event.type === "agent_end") void refreshStats();
     });
     const offStatus = client.onStatus((s) => {
       setStatus(s);
-      if (s === "open") void refreshState();
+      if (s === "open") void onAttached();
     });
     client.connect();
     return () => {
@@ -205,6 +217,22 @@ export function useSession() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // onAttached runs after the socket (re)opens: load committed history, then
+  // flush any events buffered during the load (replay + live).
+  const onAttached = useCallback(async () => {
+    loading.current = true;
+    buffer.current = [];
+    await Promise.all([refreshState(), refreshStats(), loadMessages()]);
+    const queued = buffer.current;
+    buffer.current = [];
+    loading.current = false;
+    for (const event of queued) {
+      dispatch({ type: "event", event });
+      if (event.type === "agent_end") void refreshStats();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client]);
 
   const refreshState = useCallback(async () => {
     const res = await client.request<{
@@ -235,12 +263,14 @@ export function useSession() {
 
   const abort = useCallback(() => client.send({ type: "abort" }), [client]);
 
+  // Start a fresh session by re-attaching the socket with no session id; the
+  // backend spawns a new pi process (unify-on-attach). The open handler then
+  // loads (empty) history; loadMessages is a no-op for a fresh session.
   const newSession = useCallback(async () => {
-    await client.request({ type: "new_session" });
     dispatch({ type: "reset" });
-    await refreshState();
     setStats(null);
-  }, [client, refreshState]);
+    client.switchTo(undefined);
+  }, [client]);
 
   // Load the current conversation's messages into the transcript.
   const loadMessages = useCallback(async () => {
@@ -248,18 +278,21 @@ export function useSession() {
     if (res.success && res.data?.messages) dispatch({ type: "load", messages: res.data.messages });
   }, [client]);
 
+  // Switch sessions by re-attaching the socket to the target id (unify-on-
+  // attach). The previous session's pi process keeps running in the background.
   const switchSession = useCallback(
     async (sessionPath: string) => {
-      const res = await client.request<{ cancelled: boolean }>({ type: "switch_session", sessionPath });
-      if (res.success && !res.data?.cancelled) {
-        await loadMessages();
-        await refreshState();
-        await refreshStats();
-      }
-      return res.success;
+      dispatch({ type: "reset" });
+      client.switchTo(sessionPath);
+      return true;
     },
-    [client, loadMessages, refreshState, refreshStats],
+    [client],
   );
+
+  // Hard-stop a session's pi process (the file persists for cold resume).
+  const stopSession = useCallback(async (sessionPath: string) => {
+    await fetch(`/api/sessions/stop?id=${encodeURIComponent(sessionPath)}`, { method: "POST" });
+  }, []);
 
   const renameSession = useCallback(
     async (name: string) => {
@@ -289,6 +322,7 @@ export function useSession() {
     abort,
     newSession,
     switchSession,
+    stopSession,
     renameSession,
     cycleThinking,
     refreshState,
