@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import type { ForkMessage, SessionStats } from "../api/types";
+import type { SessionInfo, SessionStats } from "../api/types";
 import type { Session } from "../hooks/useSession";
 import { Sheet } from "./Sheet";
+import { RenameDialog } from "./RenameDialog";
 import styles from "./SessionMenu.module.css";
 
 interface Props {
@@ -11,66 +12,69 @@ interface Props {
 }
 
 export function SessionMenu({ open, onClose, session }: Props) {
-  const { client, sessionName, stats, newSession } = session;
-  const [forks, setForks] = useState<ForkMessage[]>([]);
+  const { sessionName, stats, newSession, switchSession, renameSession } = session;
+  const [list, setList] = useState<SessionInfo[]>([]);
+  const [renaming, setRenaming] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    client
-      .request<{ messages: ForkMessage[] }>({ type: "get_fork_messages" })
-      .then((res) => res.success && res.data && setForks(res.data.messages))
-      .catch(() => {});
-  }, [open, client]);
-
-  const rename = async () => {
-    const name = prompt("Session name", sessionName ?? "");
-    if (name === null) return;
-    await client.request({ type: "set_session_name", name });
-    await session.refreshState();
-  };
-
-  const clone = async () => {
-    await client.request({ type: "clone" });
-    onClose();
-  };
-
-  const fork = async (entryId: string) => {
-    await client.request({ type: "fork", entryId });
-    onClose();
-  };
+    fetch("/api/sessions")
+      .then((r) => r.json())
+      .then((data: SessionInfo[]) => setList(data))
+      .catch(() => setList([]));
+  }, [open]);
 
   const start = async () => {
+    setBusy(true);
     await newSession();
+    setBusy(false);
+    onClose();
+  };
+
+  const resume = async (path: string) => {
+    setBusy(true);
+    await switchSession(path);
+    setBusy(false);
     onClose();
   };
 
   return (
-    <Sheet open={open} title="Session" onClose={onClose}>
-      {stats && <Stats stats={stats} />}
+    <>
+      <Sheet open={open} title="Sessions" onClose={onClose}>
+        {stats && <Stats stats={stats} />}
 
-      <div className={styles.actions}>
-        <button className={styles.action} onClick={start}>
-          ＋ New session
-        </button>
-        <button className={styles.action} onClick={rename}>
-          ✎ Rename
-        </button>
-        <button className={styles.action} onClick={clone}>
-          ⎘ Clone
-        </button>
-      </div>
-
-      {forks.length > 0 && (
-        <div className={styles.forks}>
-          <div className={styles.forksLabel}>Fork from a message</div>
-          {forks.map((f) => (
-            <button key={f.entryId} className={styles.fork} onClick={() => fork(f.entryId)}>
-              {f.text}
-            </button>
-          ))}
+        <div className={styles.actions}>
+          <button className={styles.primary} onClick={start} disabled={busy}>
+            ＋ New session
+          </button>
+          <button className={styles.secondary} onClick={() => setRenaming(true)} disabled={busy}>
+            Rename {sessionName ? `“${sessionName}”` : "current"}
+          </button>
         </div>
-      )}
-    </Sheet>
+
+        <div className={styles.listLabel}>Resume</div>
+        <ul className={styles.list}>
+          {list.map((s) => (
+            <li key={s.path}>
+              <button className={styles.item} onClick={() => resume(s.path)} disabled={busy}>
+                <span className={styles.name}>{s.name}</span>
+                {s.preview && s.preview !== s.name && <span className={styles.preview}>{s.preview}</span>}
+                <span className={styles.time}>{relative(s.modified)}</span>
+              </button>
+            </li>
+          ))}
+          {list.length === 0 && <li className={styles.empty}>No saved sessions yet.</li>}
+        </ul>
+      </Sheet>
+
+      <RenameDialog
+        open={renaming}
+        initial={sessionName ?? ""}
+        onClose={() => setRenaming(false)}
+        onSave={(name) => void renameSession(name)}
+      />
+    </>
   );
 }
 
@@ -95,6 +99,15 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function fmt(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return String(n);
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+}
+
+function relative(iso: string): string {
+  const d = new Date(iso).getTime();
+  const mins = Math.round((Date.now() - d) / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.round(hrs / 24)}d`;
 }

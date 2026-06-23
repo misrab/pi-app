@@ -9,9 +9,18 @@ interface Props {
   sessionName?: string;
   onOpenModel: () => void;
   onOpenSession: () => void;
+  onCycleThinking: () => void;
 }
 
-export function Header({ status, model, thinkingLevel, sessionName, onOpenModel, onOpenSession }: Props) {
+export function Header({
+  status,
+  model,
+  thinkingLevel,
+  sessionName,
+  onOpenModel,
+  onOpenSession,
+  onCycleThinking,
+}: Props) {
   return (
     <header className={styles.header}>
       <button className={styles.session} onClick={onOpenSession} aria-label="Sessions">
@@ -20,9 +29,14 @@ export function Header({ status, model, thinkingLevel, sessionName, onOpenModel,
 
       <button className={styles.model} onClick={onOpenModel}>
         <span className={styles.modelName}>{model?.name ?? "no model"}</span>
-        {model?.reasoning && <span className={styles.think}>{thinkingLevel}</span>}
         <span className={styles.caret}>▾</span>
       </button>
+
+      {model?.reasoning && (
+        <button className={styles.think} onClick={onCycleThinking} title="Cycle thinking level">
+          {thinkingLevel}
+        </button>
+      )}
 
       <div className={styles.right}>
         {sessionName && <span className={styles.sessionName}>{sessionName}</span>}

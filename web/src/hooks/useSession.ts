@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { RpcClient, type ConnectionStatus } from "../api/rpc";
-import type { Event, Model, SessionStats, ThinkingLevel } from "../api/types";
+import type { Event, Model, SessionStats, StoredMessage, ThinkingLevel } from "../api/types";
 
 // A Block is one renderable unit in the transcript.
 export type Block =
@@ -26,6 +26,7 @@ interface State {
 type Action =
   | { type: "user"; text: string }
   | { type: "event"; event: Event }
+  | { type: "load"; messages: StoredMessage[] }
   | { type: "reset" };
 
 let uid = 0;
@@ -39,9 +40,59 @@ function reducer(state: State, action: Action): State {
     case "user":
       return { ...state, blocks: [...state.blocks, { id: nextId(), kind: "user", text: action.text }] };
 
+    case "load":
+      return { blocks: messagesToBlocks(action.messages), streaming: false };
+
     case "event":
       return handleEvent(state, action.event);
   }
+}
+
+// messagesToBlocks rebuilds the transcript from stored messages (on resume).
+function messagesToBlocks(messages: StoredMessage[]): Block[] {
+  const blocks: Block[] = [];
+  for (const m of messages) {
+    if (m.role === "user") {
+      blocks.push({ id: nextId(), kind: "user", text: contentToText(m.content) });
+    } else if (m.role === "assistant") {
+      for (const c of asArray(m.content)) {
+        if (c?.type === "text" && c.text) {
+          blocks.push({ id: nextId(), kind: "text", text: c.text });
+        } else if (c?.type === "thinking" && c.thinking) {
+          blocks.push({ id: nextId(), kind: "thinking", text: c.thinking });
+        } else if (c?.type === "toolCall") {
+          blocks.push({
+            id: nextId(),
+            kind: "tool",
+            toolId: c.id ?? nextId(),
+            name: c.name ?? "tool",
+            args: c.arguments,
+            done: true,
+          });
+        }
+      }
+    } else if (m.role === "toolResult") {
+      const text = contentToText(m.content);
+      const tool = [...blocks].reverse().find((b) => b.kind === "tool" && b.toolId === m.toolCallId);
+      if (tool && tool.kind === "tool") {
+        tool.result = text;
+        tool.isError = m.isError;
+      }
+    }
+  }
+  return blocks;
+}
+
+function asArray(content: unknown): any[] {
+  return Array.isArray(content) ? content : [];
+}
+
+function contentToText(content: unknown): string {
+  if (typeof content === "string") return content;
+  return asArray(content)
+    .filter((c) => c?.type === "text" && c.text)
+    .map((c) => c.text)
+    .join("\n");
 }
 
 function handleEvent(state: State, event: Event): State {
@@ -189,6 +240,39 @@ export function useSession() {
     setStats(null);
   }, [client, refreshState]);
 
+  // Load the current conversation's messages into the transcript.
+  const loadMessages = useCallback(async () => {
+    const res = await client.request<{ messages: StoredMessage[] }>({ type: "get_messages" });
+    if (res.success && res.data) dispatch({ type: "load", messages: res.data.messages });
+  }, [client]);
+
+  const switchSession = useCallback(
+    async (sessionPath: string) => {
+      const res = await client.request<{ cancelled: boolean }>({ type: "switch_session", sessionPath });
+      if (res.success && !res.data?.cancelled) {
+        await loadMessages();
+        await refreshState();
+        await refreshStats();
+      }
+      return res.success;
+    },
+    [client, loadMessages, refreshState, refreshStats],
+  );
+
+  const renameSession = useCallback(
+    async (name: string) => {
+      await client.request({ type: "set_session_name", name });
+      await refreshState();
+    },
+    [client, refreshState],
+  );
+
+  // Cycle thinking level (mirrors the CLI's shift+tab).
+  const cycleThinking = useCallback(async () => {
+    const res = await client.request<{ level: ThinkingLevel } | null>({ type: "cycle_thinking_level" });
+    if (res.success && res.data) setThinkingLevel(res.data.level);
+  }, [client]);
+
   return {
     client,
     blocks: state.blocks,
@@ -201,6 +285,9 @@ export function useSession() {
     sendPrompt,
     abort,
     newSession,
+    switchSession,
+    renameSession,
+    cycleThinking,
     refreshState,
     refreshStats,
   };

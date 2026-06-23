@@ -142,3 +142,20 @@ export interface PiCommand {
   description?: string;
   source: "extension" | "prompt" | "skill";
 }
+
+// Saved session listing (from the backend /api/sessions endpoint).
+export interface SessionInfo {
+  path: string;
+  name: string;
+  modified: string;
+  preview: string;
+}
+
+// A message loaded from get_messages when resuming a session.
+export interface StoredMessage {
+  role: "user" | "assistant" | "toolResult" | string;
+  content: unknown;
+  toolName?: string;
+  toolCallId?: string;
+  isError?: boolean;
+}

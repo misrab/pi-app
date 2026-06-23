@@ -35,13 +35,19 @@
 }
 
 .think {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   color: var(--accent);
   background: #1a2138;
-  padding: 1px 6px;
-  border-radius: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.think:active {
+  background: #232c4a;
 }
 
 .caret {

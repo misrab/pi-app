@@ -28,44 +28,84 @@
 .actions {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--panel-2);
+  gap: 8px;
+  padding: 0 16px 8px;
 }
 
-.action {
-  text-align: left;
-  padding: 14px 16px;
-  color: var(--text);
+.primary,
+.secondary {
+  text-align: center;
+  padding: 13px;
+  border-radius: 11px;
   font-size: 0.92rem;
+  font-weight: 600;
 }
 
-.action:active {
+.primary {
+  background: var(--accent);
+  color: #0f1117;
+}
+
+.secondary {
   background: var(--panel-2);
+  color: var(--text);
 }
 
-.forks {
-  border-top: 1px solid var(--panel-2);
-  padding: 12px 16px;
-}
-
-.forksLabel {
+.listLabel {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
-  margin-bottom: 8px;
+  padding: 12px 16px 6px;
 }
 
-.fork {
-  display: block;
+.list {
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   width: 100%;
   text-align: left;
-  padding: 10px 12px;
-  margin-bottom: 6px;
+  padding: 12px 16px;
+  position: relative;
+}
+
+.item:active {
   background: var(--panel-2);
-  border-radius: 10px;
-  color: var(--text);
-  font-size: 0.85rem;
+}
+
+.name {
+  font-size: 0.92rem;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-right: 40px;
+}
+
+.preview {
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 40px;
+}
+
+.time {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.empty {
+  padding: 16px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.85rem;
 }

@@ -22,6 +22,7 @@ export function App() {
         sessionName={session.sessionName}
         onOpenModel={() => setSheet("model")}
         onOpenSession={() => setSheet("session")}
+        onCycleThinking={session.cycleThinking}
       />
 
       <Transcript blocks={session.blocks} streaming={session.streaming} />

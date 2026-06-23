@@ -10,11 +10,11 @@ ADDR ?= :8080
 # Open http://localhost:5173. Requires `pi` on PATH.
 dev: web-install free-port
 	@echo "backend :8080  ·  ui http://localhost:5173"
-	@(go run ./cmd/server --addr :8080 --no-session &) && cd web && npm run dev
+	@(go run ./cmd/server --addr :8080 --session-dir .dev-sessions &) && cd web && npm run dev
 
 # Backend only (serves the prebuilt embedded UI on :8080).
 dev-server: free-port
-	go run ./cmd/server --addr $(ADDR) --no-session
+	go run ./cmd/server --addr $(ADDR) --session-dir .dev-sessions
 
 web-install:
 	@cd web && [ -d node_modules ] || npm install
@@ -36,9 +36,16 @@ build-web: web-install
 docker:
 	docker build -t pi-app .
 
+# Local Docker run. Stops any stale container, then seeds the container's own
+# config from your ~/.pi/agent (read-only) — portable files only. Extensions are
+# installed fresh inside the container for Linux, so macOS native binaries never
+# leak in and your host config is never mutated.
 dev-docker: docker free-port
-	docker run --rm -it -p $(patsubst :%,%,$(ADDR)):8080 \
+	-docker rm -f pi-app-dev 2>/dev/null
+	docker run --rm -it --name pi-app-dev -p $(patsubst :%,%,$(ADDR)):8080 \
 		$(if $(wildcard pi.env),--env-file pi.env) \
+		-v $(HOME)/.pi/agent:/seed:ro \
+		-e PI_CONFIG_SEED=/seed \
 		pi-app --no-session
 
 tidy:

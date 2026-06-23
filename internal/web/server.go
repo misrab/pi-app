@@ -5,33 +5,49 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"io/fs"
 	"log/slog"
 	"net/http"
 
 	"github.com/coder/websocket"
 	"github.com/misrab/pi-app/internal/pi"
+	"github.com/misrab/pi-app/internal/sessions"
 )
 
 // Server serves the UI and WebSocket bridge.
 type Server struct {
-	piOpts pi.Options
+	piOpts     pi.Options
+	sessionDir string
 }
 
 // New creates a web server that spawns pi sessions with the given options.
-func New(piOpts pi.Options) *Server {
-	return &Server{piOpts: piOpts}
+// sessionDir is where pi stores session files (for the resume UI).
+func New(piOpts pi.Options, sessionDir string) *Server {
+	return &Server{piOpts: piOpts, sessionDir: sessionDir}
 }
 
 // Handler returns the HTTP handler.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", s.handleWS)
+	mux.HandleFunc("/api/sessions", s.handleSessions)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"healthy":true}`))
 	})
 	mux.Handle("/", s.spaHandler())
 	return mux
+}
+
+// handleSessions lists saved sessions for the resume UI.
+func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
+	list, err := sessions.List(s.sessionDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(list)
 }
 
 // spaHandler serves the embedded Vite build, falling back to index.html for
