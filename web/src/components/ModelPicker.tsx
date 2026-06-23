@@ -20,13 +20,19 @@ export function ModelPicker({ open, onClose, session }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    Promise.all([
-      client.request<{ models: Model[] }>({ type: "get_available_models" }),
-      fetch("/api/settings").then((r) => r.json()),
-    ]).then(([modelsRes, settings]) => {
-      if (modelsRes.success && modelsRes.data) setModels(modelsRes.data.models);
-      if (Array.isArray(settings.enabledModels)) setEnabledModels(settings.enabledModels);
-    }).catch(() => {});
+    // Load models independently so the list always renders.
+    client.request<{ models: Model[] }>({ type: "get_available_models" })
+      .then((res) => {
+        if (res.success && res.data) setModels(res.data.models);
+      })
+      .catch(() => {});
+    // Settings filtering is best-effort: if it fails, show all models.
+    fetch("/api/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => {
+        if (s && Array.isArray(s.enabledModels)) setEnabledModels(s.enabledModels);
+      })
+      .catch(() => {});
   }, [open, client]);
 
   const pick = async (m: Model) => {
