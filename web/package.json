@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "make-pwa": "github:misrab/make-pwa",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

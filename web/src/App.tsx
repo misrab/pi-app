@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PwaInstall } from "make-pwa";
 import { useSession } from "./hooks/useSession";
 import { Header } from "./components/Header";
 import { Transcript } from "./components/Transcript";
@@ -15,8 +16,10 @@ export function App() {
 
   return (
     <div className={styles.app}>
+      <PwaInstall appName="pi" accentColor="#7c9cff" />
       <Header
         status={session.status}
+        initializing={session.initializing}
         model={session.model}
         thinkingLevel={session.thinkingLevel}
         sessionName={session.sessionName}
@@ -25,11 +28,15 @@ export function App() {
         onCycleThinking={session.cycleThinking}
       />
 
-      <Transcript blocks={session.blocks} streaming={session.streaming} />
+      <Transcript
+        blocks={session.blocks}
+        streaming={session.streaming}
+        initializing={session.initializing}
+      />
 
       <Composer
         streaming={session.streaming}
-        disabled={session.status !== "open"}
+        disabled={session.status !== "open" || session.initializing}
         onSend={session.sendPrompt}
         onAbort={session.abort}
       />

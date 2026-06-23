@@ -14,14 +14,15 @@ import (
 	"sync"
 )
 
-// Session is a running `pi --mode rpc` process.
+// Session is a running `pi --mode rpc` process. Events are fanned out to any
+// number of subscribers so multiple WebSockets can observe one process.
 type Session struct {
-	cmd    *exec.Cmd
-	stdin  io.WriteCloser
-	events chan []byte
+	cmd   *exec.Cmd
+	stdin io.WriteCloser
 
 	mu     sync.Mutex
 	closed bool
+	subs   map[chan []byte]struct{}
 }
 
 // Options configures a pi session.
@@ -62,17 +63,45 @@ func Start(ctx context.Context, opts Options) (*Session, error) {
 	}
 
 	s := &Session{
-		cmd:    cmd,
-		stdin:  stdin,
-		events: make(chan []byte, 256),
+		cmd:   cmd,
+		stdin: stdin,
+		subs:  make(map[chan []byte]struct{}),
 	}
 	go s.readEvents(stdout)
 	return s, nil
 }
 
-// readEvents parses pi's stdout as strict LF-delimited JSONL.
+// Subscribe returns a channel of raw event lines and an unsubscribe func. The
+// channel is closed when the session exits or the subscriber unsubscribes.
+// Slow subscribers drop events rather than blocking the reader.
+func (s *Session) Subscribe() (<-chan []byte, func()) {
+	ch := make(chan []byte, 256)
+	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		close(ch)
+		return ch, func() {}
+	}
+	s.subs[ch] = struct{}{}
+	s.mu.Unlock()
+
+	var once sync.Once
+	return ch, func() {
+		once.Do(func() {
+			s.mu.Lock()
+			if _, ok := s.subs[ch]; ok {
+				delete(s.subs, ch)
+				close(ch)
+			}
+			s.mu.Unlock()
+		})
+	}
+}
+
+// readEvents parses pi's stdout as strict LF-delimited JSONL and fans each line
+// out to all subscribers. On exit, all subscriber channels are closed.
 func (s *Session) readEvents(stdout io.Reader) {
-	defer close(s.events)
+	defer s.closeSubs()
 
 	r := bufio.NewReader(stdout)
 	for {
@@ -83,7 +112,7 @@ func (s *Session) readEvents(stdout io.Reader) {
 			if len(line) > 0 {
 				buf := make([]byte, len(line))
 				copy(buf, line)
-				s.events <- buf
+				s.broadcast(buf)
 			}
 		}
 		if err != nil {
@@ -95,14 +124,35 @@ func (s *Session) readEvents(stdout io.Reader) {
 	}
 }
 
+// broadcast sends a line to every subscriber, dropping it for any subscriber
+// whose buffer is full (slow consumers must not stall the reader).
+func (s *Session) broadcast(line []byte) {
+	s.mu.Lock()
+	for ch := range s.subs {
+		select {
+		case ch <- line:
+		default:
+		}
+	}
+	s.mu.Unlock()
+}
+
+// closeSubs closes all subscriber channels and marks the session closed.
+func (s *Session) closeSubs() {
+	s.mu.Lock()
+	s.closed = true
+	for ch := range s.subs {
+		close(ch)
+		delete(s.subs, ch)
+	}
+	s.mu.Unlock()
+}
+
 func trimLine(b []byte) []byte {
 	s := strings.TrimRight(string(b), "\n")
 	s = strings.TrimRight(s, "\r")
 	return []byte(s)
 }
-
-// Events returns the channel of raw JSON event lines from pi. Closed when pi exits.
-func (s *Session) Events() <-chan []byte { return s.events }
 
 // Send writes a raw JSON command line to pi's stdin.
 func (s *Session) Send(cmd []byte) error {
@@ -126,6 +176,10 @@ func (s *Session) Close() error {
 		return nil
 	}
 	s.closed = true
+	for ch := range s.subs {
+		close(ch)
+		delete(s.subs, ch)
+	}
 	s.mu.Unlock()
 
 	_ = s.stdin.Close()

@@ -1,13 +1,15 @@
 import { useEffect, useRef } from "react";
 import type { Block } from "../hooks/useSession";
+import { SkeletonBubble } from "./Skeleton";
 import styles from "./Transcript.module.css";
 
 interface Props {
   blocks: Block[];
   streaming: boolean;
+  initializing: boolean;
 }
 
-export function Transcript({ blocks, streaming }: Props) {
+export function Transcript({ blocks, streaming, initializing }: Props) {
   const endRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom as content streams in.
@@ -17,7 +19,14 @@ export function Transcript({ blocks, streaming }: Props) {
 
   return (
     <div className={styles.transcript}>
-      {blocks.length === 0 && <div className={styles.empty}>Start a conversation with pi.</div>}
+      {initializing && (
+        <>
+          <SkeletonBubble align="right" />
+          <SkeletonBubble align="left" />
+          <SkeletonBubble align="right" />
+        </>
+      )}
+      {!initializing && blocks.length === 0 && <div className={styles.empty}>Start a conversation with pi.</div>}
       {blocks.map((b) => (
         <BlockView key={b.id} block={b} />
       ))}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Model, ThinkingLevel } from "../api/types";
 import type { Session } from "../hooks/useSession";
 import { Sheet } from "./Sheet";
+import { Skeleton } from "./Skeleton";
 import styles from "./ModelPicker.module.css";
 
 const LEVELS: ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
@@ -49,7 +50,15 @@ export function ModelPicker({ open, onClose, session }: Props) {
             </button>
           </li>
         ))}
-        {models.length === 0 && <li className={styles.loading}>Loading models…</li>}
+        {models.length === 0 && (
+          <li className={styles.loading}>
+            {["80%","60%","70%","55%","65%"].map((w, i) => (
+              <div key={i} style={{ marginBottom: 14 }}>
+                <Skeleton width={w} height="1em" />
+              </div>
+            ))}
+          </li>
+        )}
       </ul>
 
       {model?.reasoning && (

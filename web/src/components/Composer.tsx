@@ -32,7 +32,7 @@ export function Composer({ streaming, disabled, onSend, onAbort }: Props) {
       <textarea
         ref={ref}
         className={styles.input}
-        placeholder={disabled ? "Connecting…" : "Message pi…"}
+        placeholder={disabled ? "Starting pi…" : "Message pi…"}
         rows={1}
         value={text}
         disabled={disabled}

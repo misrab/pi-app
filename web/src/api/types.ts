@@ -143,12 +143,17 @@ export interface PiCommand {
   source: "extension" | "prompt" | "skill";
 }
 
+// Live process status for a session (from the backend manager).
+export type SessionRunStatus = "running" | "idle" | "stopped";
+
 // Saved session listing (from the backend /api/sessions endpoint).
 export interface SessionInfo {
   path: string;
   name: string;
   modified: string;
   preview: string;
+  status: SessionRunStatus;
+  attached: number;
 }
 
 // A message loaded from get_messages when resuming a session.

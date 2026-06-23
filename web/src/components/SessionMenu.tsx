@@ -3,6 +3,7 @@ import type { SessionInfo, SessionStats } from "../api/types";
 import type { Session } from "../hooks/useSession";
 import { Sheet } from "./Sheet";
 import { RenameDialog } from "./RenameDialog";
+import { Skeleton } from "./Skeleton";
 import styles from "./SessionMenu.module.css";
 
 interface Props {
@@ -13,12 +14,13 @@ interface Props {
 
 export function SessionMenu({ open, onClose, session }: Props) {
   const { sessionName, stats, newSession, switchSession, renameSession } = session;
-  const [list, setList] = useState<SessionInfo[]>([]);
+  const [list, setList] = useState<SessionInfo[] | null>(null); // null = loading
   const [renaming, setRenaming] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    setList(null);
     fetch("/api/sessions")
       .then((r) => r.json())
       .then((data: SessionInfo[]) => setList(data ?? []))
@@ -55,7 +57,13 @@ export function SessionMenu({ open, onClose, session }: Props) {
 
         <div className={styles.listLabel}>Resume</div>
         <ul className={styles.list}>
-          {list.map((s) => (
+          {list === null && [1,2,3].map(i => (
+            <li key={i} style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
+              <Skeleton width="60%" height="0.9em" />
+              <Skeleton width="85%" height="0.75em" />
+            </li>
+          ))}
+          {list !== null && list.map((s) => (
             <li key={s.path}>
               <button className={styles.item} onClick={() => resume(s.path)} disabled={busy}>
                 <span className={styles.name}>{s.name}</span>
@@ -64,7 +72,7 @@ export function SessionMenu({ open, onClose, session }: Props) {
               </button>
             </li>
           ))}
-          {list.length === 0 && <li className={styles.empty}>No saved sessions yet.</li>}
+          {list !== null && list.length === 0 && <li className={styles.empty}>No saved sessions yet.</li>}
         </ul>
       </Sheet>
 

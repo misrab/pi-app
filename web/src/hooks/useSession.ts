@@ -181,6 +181,7 @@ export function useSession() {
 
   const [state, dispatch] = useReducer(reducer, { blocks: [], streaming: false });
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
+  const [initializing, setInitializing] = useState(true); // true until first model loads
   const [model, setModel] = useState<Model | null>(null);
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>("medium");
   const [stats, setStats] = useState<SessionStats | null>(null);
@@ -215,6 +216,7 @@ export function useSession() {
       setModel(res.data.model);
       setThinkingLevel(res.data.thinkingLevel);
       setSessionName(res.data.sessionName);
+      setInitializing(false);
     }
   }, [client]);
 
@@ -278,6 +280,7 @@ export function useSession() {
     blocks: state.blocks,
     streaming: state.streaming,
     status,
+    initializing,
     model,
     thinkingLevel,
     stats,

@@ -5,12 +5,15 @@ package web
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"io/fs"
 	"log/slog"
 	"net/http"
 
 	"github.com/coder/websocket"
+	"github.com/misrab/pi-app/internal/manager"
 	"github.com/misrab/pi-app/internal/pi"
 	"github.com/misrab/pi-app/internal/sessions"
 )
@@ -19,12 +22,13 @@ import (
 type Server struct {
 	piOpts     pi.Options
 	sessionDir string
+	mgr        *manager.Manager
 }
 
 // New creates a web server that spawns pi sessions with the given options.
 // sessionDir is where pi stores session files (for the resume UI).
 func New(piOpts pi.Options, sessionDir string) *Server {
-	return &Server{piOpts: piOpts, sessionDir: sessionDir}
+	return &Server{piOpts: piOpts, sessionDir: sessionDir, mgr: manager.New(piOpts)}
 }
 
 // Handler returns the HTTP handler.
@@ -32,6 +36,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", s.handleWS)
 	mux.HandleFunc("/api/sessions", s.handleSessions)
+	mux.HandleFunc("/api/sessions/stop", s.handleStop)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"healthy":true}`))
 	})
@@ -39,15 +44,53 @@ func (s *Server) Handler() http.Handler {
 	return mux
 }
 
-// handleSessions lists saved sessions for the resume UI.
+// handleSessions lists saved sessions for the resume UI, annotated with the
+// live status of any managed (running) processes.
 func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
 	list, err := sessions.List(s.sessionDir)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	live := map[string]manager.SessionStatus{}
+	for _, st := range s.mgr.List() {
+		live[st.ID] = st
+	}
+	type annotated struct {
+		sessions.Info
+		Status   string `json:"status"`
+		Attached int    `json:"attached"`
+	}
+	out := make([]annotated, 0, len(list))
+	for _, info := range list {
+		a := annotated{Info: info, Status: "stopped"}
+		if st, ok := live[info.Path]; ok {
+			a.Status = string(st.Status)
+			a.Attached = st.Attached
+		}
+		out = append(out, a)
+	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(list)
+	_ = json.NewEncoder(w).Encode(out)
+}
+
+// handleStop kills the pi process for a session id (?id=<sessionPath>). The
+// session file persists on disk for cold resume.
+func (s *Server) handleStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, "missing id", http.StatusBadRequest)
+		return
+	}
+	if err := s.mgr.Stop(id); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // spaHandler serves the embedded Vite build, falling back to index.html for
@@ -66,6 +109,13 @@ func (s *Server) spaHandler() http.Handler {
 		}
 		fileServer.ServeHTTP(w, r)
 	})
+}
+
+// randID returns a short random hex string for transient session keys.
+func randID() string {
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 func trimLeadingSlash(p string) string {
@@ -89,27 +139,40 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.CloseNow()
 
-	// Each connection gets its own pi session.
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	session, err := pi.Start(ctx, s.piOpts)
+	// Attach to (or spawn) the managed session for this id. The id is the pi
+	// session file path; empty means a fresh session, which gets a unique
+	// transient key so concurrent "new" tabs don't collide on the same process.
+	id := r.URL.Query().Get("session")
+	var piArgs []string
+	if id != "" {
+		piArgs = []string{"--session", id}
+	} else {
+		id = "new:" + randID()
+	}
+	// replay is reserved for Phase 3 (live re-attach to a streaming session).
+	// Phase 1 reconstructs transcript history via get_messages on the client.
+	ms, _, err := s.mgr.Attach(id, piArgs)
 	if err != nil {
-		slog.Error("failed to start pi", "err", err)
-		conn.Close(websocket.StatusInternalError, "failed to start pi")
+		slog.Error("failed to attach session", "err", err)
+		conn.Close(websocket.StatusInternalError, "failed to attach session")
 		return
 	}
-	defer session.Close()
+	defer s.mgr.Detach(id)
 
-	// pi events -> browser
+	events, unsub := ms.Subscribe()
+	defer unsub()
+
+	// pi events -> browser (process keeps running after WS closes)
 	go func() {
-		for ev := range session.Events() {
+		for ev := range events {
 			if err := conn.Write(ctx, websocket.MessageText, ev); err != nil {
 				cancel()
 				return
 			}
 		}
-		// pi exited
 		cancel()
 	}()
 
@@ -119,7 +182,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		if err := session.Send(data); err != nil {
+		if err := ms.Send(data); err != nil {
 			slog.Error("failed to send to pi", "err", err)
 			return
 		}

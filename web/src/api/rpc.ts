@@ -12,7 +12,8 @@ export type ConnectionStatus = "connecting" | "open" | "closed";
  */
 export class RpcClient {
   private ws: WebSocket | null = null;
-  private url: string;
+  private base: string;
+  private sessionId?: string;
   private seq = 0;
   private pending = new Map<string, (res: Response) => void>();
   private eventHandlers = new Set<EventHandler>();
@@ -22,17 +23,43 @@ export class RpcClient {
 
   constructor(url?: string) {
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    this.url = url ?? `${proto}://${location.host}/ws`;
+    this.base = url ?? `${proto}://${location.host}/ws`;
   }
 
-  connect() {
+  /** Current session id (pi session file path), or undefined for a fresh one. */
+  get session(): string | undefined {
+    return this.sessionId;
+  }
+
+  connect(sessionId?: string) {
+    this.sessionId = sessionId;
     this.shouldReconnect = true;
     this.open();
   }
 
+  /**
+   * Re-attach the WebSocket to a different session id (unify-on-attach). Passing
+   * undefined starts a fresh session. The socket is torn down and reopened.
+   */
+  switchTo(sessionId?: string) {
+    this.sessionId = sessionId;
+    this.shouldReconnect = true;
+    const old = this.ws;
+    this.ws = null;
+    if (old) {
+      old.onclose = null; // suppress auto-reconnect of the stale socket
+      old.close();
+    }
+    this.open();
+  }
+
+  private wsUrl(): string {
+    return this.sessionId ? `${this.base}?session=${encodeURIComponent(this.sessionId)}` : this.base;
+  }
+
   private open() {
     this.setStatus("connecting");
-    const ws = new WebSocket(this.url);
+    const ws = new WebSocket(this.wsUrl());
     this.ws = ws;
 
     ws.onopen = () => this.setStatus("open");
