@@ -34,6 +34,7 @@ All flags have env-var equivalents.
 | `--config-dir` | `PI_CONFIG_DIR` | `/data/pi-config` | the container's own config dir |
 | `--config-subdir` | `PI_CONFIG_SUBDIR` | — | subdir holding the agent config (e.g. `agent`) |
 | `--config-poll` | `PI_CONFIG_POLL` | `2m` | how often to re-pull the config repo (0 disables) |
+| `--auth-file` | `PI_AUTH_FILE` | — | path to `auth.json` to overlay into the config dir |
 | `--ssh-key` | `PI_SSH_KEY` | — | ssh key for cloning a private config repo |
 | `--no-session` | — | false | run pi without session persistence |
 
@@ -49,6 +50,17 @@ platform-specific extensions are installed fresh for the running platform.
   so native binaries match this platform.
 - Excluded from seeding: `git/`, `npm/`, `bin/`, `node_modules/`, `sessions/`.
 - Any failure degrades gracefully so pi still starts.
+
+### Auth
+
+`auth.json` (pi’s credential store for all LLM providers) is gitignored and
+never in the config repo. Supply it via `--auth-file` / `PI_AUTH_FILE` pointing
+at a mounted file (e.g. `/run/pi-auth.json`). pi-app copies it into the config
+dir after cloning so pi finds it at its expected location.
+
+For tiberius deployments, `auth.json` is pushed to each server by
+`make push-secrets-tiberius` in the `.pi` repo, then mounted via `cluster.yml`
+`volumes:`.
 
 ### What updates how
 

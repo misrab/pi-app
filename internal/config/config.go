@@ -63,6 +63,34 @@ func Resolve(repo, seed, dir, subdir, sshKey, piBin string) string {
 	return agentDir
 }
 
+// OverlayAuth copies an auth.json file into the agent config dir so pi can find
+// it. Call after Resolve. Safe to call if src is empty or missing.
+func OverlayAuth(src, agentDir string) {
+	if src == "" || agentDir == "" {
+		return
+	}
+	if _, err := os.Stat(src); err != nil {
+		return // not mounted, skip silently
+	}
+	if err := os.MkdirAll(agentDir, 0o755); err != nil {
+		slog.Warn("overlay auth: mkdir failed", "err", err)
+		return
+	}
+	dst := filepath.Join(agentDir, "auth.json")
+	if err := copyFile(src, dst, must(os.Stat(src))); err != nil {
+		slog.Warn("overlay auth: copy failed", "err", err)
+		return
+	}
+	slog.Info("auth.json overlaid", "dst", dst)
+}
+
+func must(fi os.FileInfo, err error) os.FileInfo {
+	if err != nil {
+		panic(err)
+	}
+	return fi
+}
+
 // Repull fast-forwards the config repo; if HEAD moved, updates submodules and
 // reinstalls packages. New chat sessions (fresh pi subprocesses) then pick up
 // the updated config. Best-effort; safe to call on a ticker.

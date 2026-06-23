@@ -24,6 +24,7 @@ func main() {
 		configSeed = flag.String("config-seed", env("PI_CONFIG_SEED", ""), "source dir to seed portable config from (optional)")
 		configDir  = flag.String("config-dir", env("PI_CONFIG_DIR", "/data/pi-config"), "the container's own config dir")
 		configSub  = flag.String("config-subdir", env("PI_CONFIG_SUBDIR", ""), "subdir within repo/seed holding the agent config (e.g. 'agent')")
+		authFile   = flag.String("auth-file", env("PI_AUTH_FILE", ""), "path to auth.json to overlay into the config dir (e.g. /run/pi-auth.json)")
 		sshKey     = flag.String("ssh-key", env("PI_SSH_KEY", ""), "ssh key for cloning private config repo")
 		configPoll = flag.Duration("config-poll", pollEnv(), "how often to re-pull the config repo (0 disables)")
 		sessionDir = flag.String("session-dir", env("PI_SESSION_DIR", "/data/sessions"), "directory for pi session files (resume UI)")
@@ -34,6 +35,7 @@ func main() {
 	// Provision the container's own config dir (pull repo or seed from a source
 	// dir), then install packages for this platform.
 	piConfigDir := config.Resolve(*configRepo, *configSeed, *configDir, *configSub, *sshKey, *piBin)
+	config.OverlayAuth(*authFile, piConfigDir)
 
 	// Periodically re-pull the config repo so edits to .pi propagate without a
 	// redeploy. New chat sessions spawn fresh pi processes that read the update.
