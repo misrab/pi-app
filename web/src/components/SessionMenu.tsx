@@ -38,17 +38,17 @@ export function SessionMenu({ open, onClose, session }: Props) {
     onClose();
   };
 
-  const resume = async (path: string) => {
+  const resume = async (id: string) => {
     setBusy(true);
-    await switchSession(path);
+    await switchSession(id);
     setBusy(false);
     onClose();
   };
 
-  const stop = async (e: React.MouseEvent, path: string) => {
+  const stop = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation(); // don't trigger resume
     setBusy(true);
-    await stopSession(path);
+    await stopSession(id);
     await refresh();
     setBusy(false);
   };
@@ -76,8 +76,8 @@ export function SessionMenu({ open, onClose, session }: Props) {
             </li>
           ))}
           {list !== null && list.map((s) => (
-            <li key={s.path} className={styles.row}>
-              <button className={styles.item} onClick={() => resume(s.path)} disabled={busy}>
+            <li key={s.id} className={styles.row}>
+              <button className={styles.item} onClick={() => resume(s.id)} disabled={busy}>
                 <span className={styles.name}>
                   <StatusDot status={s.status} />
                   {s.name}
@@ -88,7 +88,7 @@ export function SessionMenu({ open, onClose, session }: Props) {
               {s.status !== "stopped" && (
                 <button
                   className={styles.stop}
-                  onClick={(e) => stop(e, s.path)}
+                  onClick={(e) => stop(e, s.id)}
                   disabled={busy}
                   aria-label="Stop session"
                   title="Stop process"

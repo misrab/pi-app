@@ -1,36 +1,46 @@
-# --- build the frontend ---
-FROM node:22-alpine AS web
-# git is needed to install the make-pwa dependency from GitHub.
+# --- build frontend + server -------------------------------------------------
+# git is needed to install the make-pwa frontend dep from GitHub.
+FROM node:22-alpine AS build
 RUN apk add --no-cache git
-WORKDIR /web
-COPY web/package*.json ./
-RUN npm ci
-COPY web/ ./
-RUN npm run build   # outputs to /internal/web/dist via vite config
+WORKDIR /app
 
-# --- build the Go server (embeds the frontend) ---
-FROM golang:1.23-alpine AS build
-WORKDIR /src
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-# bring in the built frontend so //go:embed all:dist succeeds
-COPY --from=web /internal/web/dist ./internal/web/dist
-RUN CGO_ENABLED=0 go build -o /out/pi-app ./cmd/server
+# Frontend deps + source. Vite builds into ../server/public, so the server
+# package must be present at build time for the output path to resolve.
+COPY web/package*.json web/
+RUN cd web && npm ci
+COPY server/package*.json server/
+RUN cd server && npm ci
+COPY web/ web/
+COPY server/ server/
 
-# --- runtime: node (for pi) + git/ssh (for config) + the server ---
+RUN cd web && npm run build        # -> /app/server/public
+RUN cd server && npm run build     # tsc -> /app/server/dist
+
+# --- production deps only ----------------------------------------------------
+FROM node:22-alpine AS proddeps
+WORKDIR /app/server
+COPY server/package*.json ./
+RUN npm ci --omit=dev
+
+# --- runtime -----------------------------------------------------------------
+# git + ssh are needed to clone the private .pi config repo at startup.
 FROM node:22-alpine
-RUN apk add --no-cache git openssh-client \
-    && npm install -g @earendil-works/pi-coding-agent
+RUN apk add --no-cache git openssh-client
+WORKDIR /app/server
 
-COPY --from=build /out/pi-app /usr/local/bin/pi-app
+COPY --from=proddeps /app/server/node_modules ./node_modules
+COPY --from=build /app/server/dist ./dist
+COPY --from=build /app/server/public ./public
+COPY server/package.json ./
 
-# pi binary + config storage. Auth is NOT handled here: pi-app passes the whole
-# environment through to pi, which resolves auth via its own system (provider
-# API-key env vars, ANTHROPIC_OAUTH_TOKEN, or credentials in the .pi config).
-ENV PI_BIN=pi
+# Use the bundled SDK's own pi binary for config provisioning (`pi install`),
+# so the CLI and the in-process SDK are the exact same version.
+ENV PI_BIN=/app/server/node_modules/.bin/pi
 ENV PI_CONFIG_DIR=/data/pi-config
+# The agent's working dir (where its file tools operate) + session storage
+# slug. Persisted via the /data volume.
+ENV PI_CWD=/data/workspace
 VOLUME /data
 
 EXPOSE 8080
-ENTRYPOINT ["pi-app", "--addr", ":8080"]
+ENTRYPOINT ["node", "dist/index.js"]

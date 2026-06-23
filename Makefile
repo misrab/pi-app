@@ -1,54 +1,56 @@
-# pi-app — web UI for the pi coding agent.
+# pi-app — web UI for the pi coding agent. All-Node: a single server process
+# hosts every chat session in-memory via the pi SDK and serves the React build.
 
-ADDR ?= :8080
+PORT ?= 8080
 
-.PHONY: dev dev-web dev-server build build-web web-install free-port docker dev-docker dev-stop dev-logs tidy test
+.PHONY: dev dev-server dev-web build build-web build-server install free-port \
+        docker dev-docker dev-stop dev-logs docker-check
 
 # --- local development ------------------------------------------------------
 
-# Full dev: Go backend on :8080 + Vite dev server on :5173 (proxies /ws).
-# Open http://localhost:5173. Requires `pi` on PATH.
-dev: web-install free-port
-	@echo "backend :8080  ·  ui http://localhost:5173"
-	@(go run ./cmd/server --addr :8080 --session-dir .dev-sessions &) && cd web && npm run dev
+# Full dev: Node backend on :8080 + Vite dev server on :5173 (proxies /ws+/api).
+# Open http://localhost:5173. Uses your ~/.pi/agent config.
+dev: install free-port
+	@echo "backend :$(PORT)  ·  ui http://localhost:5173"
+	@(cd server && PORT=$(PORT) PI_CWD=$(HOME) npm run dev &) && cd web && npm run dev
 
-# Backend only (serves the prebuilt embedded UI on :8080).
-dev-server: free-port
-	go run ./cmd/server --addr $(ADDR) --session-dir .dev-sessions
+# Backend only (serves the prebuilt frontend from server/public on :PORT).
+dev-server: build-web
+	cd server && PORT=$(PORT) PI_CWD=$(HOME) npm run dev
 
-web-install:
+install:
 	@cd web && [ -d node_modules ] || npm install
+	@cd server && [ -d node_modules ] || npm install
 
 free-port:
-	@lsof -ti$(ADDR) | xargs kill -9 2>/dev/null || true
+	@lsof -ti:$(PORT) | xargs kill -9 2>/dev/null || true
 
 # --- production build -------------------------------------------------------
 
-# Build frontend into internal/web/dist, then the single Go binary.
-build: build-web
-	CGO_ENABLED=0 go build -o bin/pi-app ./cmd/server
+# Build frontend (-> server/public) then compile the server (-> server/dist).
+build: build-web build-server
 
-build-web: web-install
+build-web: install
 	cd web && npm run build
+
+build-server: install
+	cd server && npm run build
 
 # --- docker -----------------------------------------------------------------
 
 docker:
 	docker build -t pi-app .
 
-# Local Docker run. Detached (no -it) so killing the terminal/make doesn't
-# interfere with the container or the Docker daemon. Stops any stale container
-# first. Seeds the container's own config from your ~/.pi/agent (read-only).
+# Local Docker run. Seeds the container's config from your ~/.pi/agent (ro).
 dev-docker: docker-check docker free-port
 	-docker rm -f pi-app-dev 2>/dev/null
-	@echo "pi-app running · http://localhost:8080  ·  Ctrl+C to stop"
-	docker run --rm --name pi-app-dev -p $(patsubst :%,%,$(ADDR)):8080 \
+	@echo "pi-app running · http://localhost:$(PORT)  ·  Ctrl+C to stop"
+	docker run --rm --name pi-app-dev -p $(PORT):8080 \
 		$(if $(wildcard pi.env),--env-file pi.env) \
 		-v $(HOME)/.pi/agent:/seed:ro \
 		-e PI_CONFIG_SEED=/seed \
 		pi-app
 
-# fail loudly if the daemon isn't running, instead of mysterious hangs
 docker-check:
 	@docker info >/dev/null 2>&1 || { \
 		echo "Docker daemon not reachable. Start Docker Desktop and try again."; \
@@ -60,9 +62,3 @@ dev-stop: docker-check
 
 dev-logs: docker-check
 	docker logs -f pi-app-dev
-
-tidy:
-	go mod tidy
-
-test:
-	go test ./...

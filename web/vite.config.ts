@@ -1,12 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// Build into ../internal/web/dist so the Go binary can embed it.
-// In dev, proxy /ws to the Go backend on :8080.
+// Build into ../server/public so the Node server can serve it.
+// In dev, proxy /ws + /api to the Node backend on :8080.
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: "../internal/web/dist",
+    outDir: "../server/public",
     emptyOutDir: true,
   },
   server: {

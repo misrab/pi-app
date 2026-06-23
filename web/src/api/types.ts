@@ -147,8 +147,9 @@ export interface PiCommand {
 export type SessionRunStatus = "running" | "idle" | "stopped";
 
 // Saved session listing (from the backend /api/sessions endpoint).
+// `id` is pi's stable session id, used to (re)attach the WebSocket.
 export interface SessionInfo {
-  path: string;
+  id: string;
   name: string;
   modified: string;
   preview: string;
