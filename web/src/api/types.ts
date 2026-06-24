@@ -122,6 +122,7 @@ export interface SessionState {
   isStreaming: boolean;
   isCompacting: boolean;
   sessionId: string;
+  sessionFile?: string; // path to the session's .jsonl (used to reattach)
   sessionName?: string;
   messageCount: number;
 }

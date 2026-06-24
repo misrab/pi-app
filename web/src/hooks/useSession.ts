@@ -7,6 +7,7 @@ export type Block =
   | { id: string; kind: "user"; text: string }
   | { id: string; kind: "text"; text: string }
   | { id: string; kind: "thinking"; text: string }
+  | { id: string; kind: "image"; url: string }
   | {
       id: string;
       kind: "tool";
@@ -73,11 +74,13 @@ function messagesToBlocks(messages: StoredMessage[] | null | undefined): Block[]
       }
     } else if (m.role === "toolResult") {
       const text = contentToText(m.content);
+      const imgs = contentImages(m.content);
       const tool = [...blocks].reverse().find((b) => b.kind === "tool" && b.toolId === m.toolCallId);
       if (tool && tool.kind === "tool") {
         tool.result = text;
         tool.isError = m.isError;
       }
+      for (const url of imgs) blocks.push({ id: nextId(), kind: "image", url });
     }
   }
   return blocks;
@@ -148,12 +151,17 @@ function handleEvent(state: State, event: Event): State {
 
     case "tool_execution_end": {
       const text = extractText(event.result?.content);
-      return updateTool(state, event.toolCallId, (b) => ({
+      const imgs = contentImages(event.result?.content);
+      let next = updateTool(state, event.toolCallId, (b) => ({
         ...b,
         result: text,
         isError: event.isError,
         done: true,
       }));
+      for (const url of imgs) {
+        next = { ...next, blocks: [...next.blocks, { id: nextId(), kind: "image" as const, url }] };
+      }
+      return next;
     }
 
     default:
@@ -166,12 +174,20 @@ function updateTool(state: State, toolId: string, fn: (b: Extract<Block, { kind:
   return { ...state, blocks };
 }
 
-function extractText(content?: { type: string; text?: string }[]): string {
+function extractText(content?: { type: string; text?: string; data?: string; mimeType?: string }[]): string {
   if (!content) return "";
   return content
     .filter((c) => c.type === "text" && c.text)
     .map((c) => c.text)
     .join("\n");
+}
+
+// Extract image content blocks from any content array and convert to data-URIs.
+function contentImages(content: unknown): string[] {
+  if (!Array.isArray(content)) return [];
+  return (content as { type: string; data?: string; mimeType?: string }[])
+    .filter((c) => c.type === "image" && c.data)
+    .map((c) => `data:${c.mimeType ?? "image/png"};base64,${c.data}`);
 }
 
 export function useSession() {

@@ -106,3 +106,76 @@
     opacity: 0.3;
   }
 }
+
+/* Streamdown markdown — tighten default spacing inside chat bubbles. */
+.markdown :first-child {
+  margin-top: 0;
+}
+.markdown :last-child {
+  margin-bottom: 0;
+}
+.markdown pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.markdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* HTML/SVG artifact previews. */
+.artifact {
+  margin: 8px 0;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel-2, #1a1d24);
+}
+.artifactHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+.artifactLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.artifactToggle {
+  font-size: 0.72rem;
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.artifactToggle:hover {
+  color: var(--text, #fff);
+  background: var(--panel, rgba(255, 255, 255, 0.06));
+}
+.artifactFrame {
+  display: block;
+  width: 100%;
+  height: 320px;
+  border: 0;
+  background: #fff;
+}
+.artifactCode {
+  margin: 0;
+  padding: 12px;
+  max-height: 320px;
+  overflow: auto;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.inlineImage {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin: 4px 14px;
+}

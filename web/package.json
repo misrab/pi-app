@@ -11,7 +11,8 @@
   "dependencies": {
     "make-pwa": "github:misrab/make-pwa",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "streamdown": "^2.5.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
