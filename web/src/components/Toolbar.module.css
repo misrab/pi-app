@@ -46,6 +46,13 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* hide scrollbar but keep scrollability */
+  scrollbar-width: none;
+}
+.controls::-webkit-scrollbar {
+  display: none;
 }
 
 .pill {

@@ -107,12 +107,28 @@
   }
 }
 
-/* Streamdown markdown — tighten default spacing inside chat bubbles. */
+/* Streamdown markdown — tighten default spacing inside chat bubbles.
+   Override the bubble's white-space: pre-wrap so markdown HTML renders
+   normally (pre-wrap would turn every \n between tags into visible space). */
+.markdown {
+  white-space: normal;
+}
 .markdown :first-child {
   margin-top: 0;
 }
 .markdown :last-child {
   margin-bottom: 0;
+}
+.markdown p {
+  margin: 0.4em 0;
+}
+.markdown ul,
+.markdown ol {
+  margin: 0.4em 0;
+  padding-left: 1.4em;
+}
+.markdown li {
+  margin: 0.15em 0;
 }
 .markdown pre {
   max-width: 100%;
