@@ -6,6 +6,11 @@
 
 self.addEventListener("install", () => self.skipWaiting());
 
+// A fetch handler is REQUIRED for Chrome's install criteria — without one,
+// `beforeinstallprompt` never fires (no install banner on Android, no install
+// icon on desktop Chrome). Network pass-through; no caching by design.
+self.addEventListener("fetch", () => {});
+
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()
