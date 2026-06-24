@@ -108,6 +108,9 @@ function sync(repo: string, dir: string, sshKey: string): void {
 
   if (fs.existsSync(path.join(dir, ".git"))) {
     console.log(`pulling config repo (${dir})`);
+    // Reset local modifications (e.g. settings.json touched by `pi install`)
+    // before pulling so --ff-only never fails on a dirty tree.
+    git(env, "-C", dir, "checkout", "--", ".");
     git(env, "-C", dir, "pull", "--ff-only", "--quiet");
     git(env, "-C", dir, "submodule", "update", "--init", "--recursive", "--quiet");
     return;
