@@ -54,7 +54,8 @@ export type Command =
   | { id?: string; type: "clone" }
   | { id?: string; type: "get_fork_messages" }
   | { id?: string; type: "set_session_name"; name: string }
-  | { id?: string; type: "get_commands" };
+  | { id?: string; type: "get_commands" }
+  | { id?: string; type: "run_command"; name: string; args: string };
 
 export interface ImageContent {
   type: "image";

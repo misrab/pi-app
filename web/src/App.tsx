@@ -23,9 +23,11 @@ export function App() {
         model={session.model}
         thinkingLevel={session.thinkingLevel}
         sessionName={session.sessionName}
+        askMode={session.askMode}
         onOpenModel={() => setSheet("model")}
         onOpenSession={() => setSheet("session")}
         onCycleThinking={session.cycleThinking}
+        onToggleAskMode={session.toggleAskMode}
       />
 
       <Transcript

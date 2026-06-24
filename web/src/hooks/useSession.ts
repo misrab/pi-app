@@ -202,6 +202,7 @@ export function useSession() {
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>("medium");
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [sessionName, setSessionName] = useState<string | undefined>();
+  const [askMode, setAskMode] = useState(false);
 
   // On every (re)attach we rebuild the transcript from committed history
   // (get_messages). While that async load is in flight, incoming events — which
@@ -318,6 +319,11 @@ export function useSession() {
     [client, refreshState],
   );
 
+  const toggleAskMode = useCallback(async () => {
+    await client.request({ type: "run_command", name: "ask", args: "" });
+    setAskMode((prev) => !prev);
+  }, [client]);
+
   // Cycle thinking level (mirrors the CLI's shift+tab).
   const cycleThinking = useCallback(async () => {
     const res = await client.request<{ level: ThinkingLevel } | null>({ type: "cycle_thinking_level" });
@@ -341,6 +347,8 @@ export function useSession() {
     stopSession,
     renameSession,
     cycleThinking,
+    askMode,
+    toggleAskMode,
     refreshState,
     refreshStats,
   };

@@ -130,6 +130,16 @@ export async function handleCommand(
     case "get_messages":
       return ok(id, "get_messages", { messages: session.messages });
 
+    case "run_command": {
+      const name = String(command.name ?? "").trim();
+      const args = String(command.args ?? "").trim();
+      const cmd = session.extensionRunner?.getCommand(name);
+      if (!cmd) return fail(id, "run_command", `Unknown command: ${name}`);
+      const ctx = session.extensionRunner.createCommandContext();
+      await cmd.handler(args, ctx);
+      return ok(id, "run_command");
+    }
+
     case "get_commands":
       return ok(id, "get_commands", { commands: collectCommands(session) });
 
