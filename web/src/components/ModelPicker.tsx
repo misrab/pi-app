@@ -56,7 +56,7 @@ export function ModelPicker({ open, onClose, session }: Props) {
                 className={`${styles.item} ${model?.id === m.id ? styles.active : ""}`}
                 onClick={() => pick(m)}
               >
-                <span className={styles.name}>{m.name}</span>
+                <span className={styles.name}>{m.name?.replace(/\s*[·•]\s*$/, "")}</span>
                 <span className={styles.provider}>{m.provider}</span>
                 {model?.id === m.id && <span className={styles.check}>✓</span>}
               </button>

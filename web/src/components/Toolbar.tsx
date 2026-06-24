@@ -32,13 +32,13 @@ export function Toolbar({
       <button className={styles.model} onClick={onOpenModel} disabled={initializing}>
         {initializing
           ? <Skeleton width="100px" height="1em" />
-          : <><span className={styles.modelName}>{model?.name ?? "no model"}</span>
+          : <><span className={styles.modelName}>{model?.name?.replace(/\s*[·•]\s*$/, "") ?? "no model"}</span>
              <span className={styles.caret}>▾</span></>
         }
       </button>
 
       <div className={styles.controls}>
-        {model?.reasoning && (
+        {model?.reasoning && thinkingLevel !== "off" && (
           <button className={styles.pill} onClick={onCycleThinking} title="Cycle thinking level">
             {thinkingLevel}
           </button>

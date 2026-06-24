@@ -85,7 +85,7 @@ export function SessionMenu({ open, onClose, session }: Props) {
                 {s.preview && s.preview !== s.name && <span className={styles.preview}>{s.preview}</span>}
                 <span className={styles.time}>{relative(s.modified)}</span>
               </button>
-              {s.status !== "stopped" && (
+              {s.status === "running" && (
                 <button
                   className={styles.stop}
                   onClick={(e) => stop(e, s.id)}
@@ -118,7 +118,7 @@ function Stats({ stats }: { stats: SessionStats }) {
     <div className={styles.stats}>
       <Stat label="Cost" value={`$${stats.cost.toFixed(4)}`} />
       <Stat label="Tokens" value={fmt(stats.tokens.total)} />
-      {ctx && ctx.percent != null && <Stat label="Context" value={`${ctx.percent}%`} />}
+      {ctx && ctx.percent != null && <Stat label="Context" value={`${ctx.percent.toFixed(2)}%`} />}
     </div>
   );
 }
