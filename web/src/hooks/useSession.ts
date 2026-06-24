@@ -205,10 +205,10 @@ export function useSession() {
   const [askMode, setAskMode] = useState(false);
 
   // On every (re)attach we rebuild the transcript from committed history
-  // (get_messages). While that async load is in flight, incoming events — which
-  // include the backend's replay of the in-flight turn — are buffered so they
-  // are not wiped by the subsequent "load" dispatch. After load resolves we
-  // flush the buffer in arrival order, reconstructing any partial response live.
+  // (get_messages). While that async load is in flight, live events are buffered
+  // so they are not wiped by the subsequent "load" dispatch, then flushed in
+  // arrival order. get_messages is authoritative: we reconcile to it again on
+  // agent_end so any streaming race (e.g. a mid-stream reconnect) self-heals.
   const loading = useRef(false);
   const buffer = useRef<Event[]>([]);
 
@@ -220,7 +220,10 @@ export function useSession() {
         return;
       }
       dispatch({ type: "event", event });
-      if (event.type === "agent_end") void refreshStats();
+      if (event.type === "agent_end") {
+        void refreshStats();
+        void loadMessages(); // reconcile to authoritative committed state
+      }
     });
     const offStatus = client.onStatus((s) => {
       setStatus(s);
@@ -246,7 +249,10 @@ export function useSession() {
     loading.current = false;
     for (const event of queued) {
       dispatch({ type: "event", event });
-      if (event.type === "agent_end") void refreshStats();
+      if (event.type === "agent_end") {
+        void refreshStats();
+        void loadMessages();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client]);

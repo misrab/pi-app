@@ -22,23 +22,29 @@ function StreamMarkdown({ text }: { text: string }) {
   );
 }
 
-// Self-contained ```html / ```svg fences are rendered as live artifacts in a
-// sandboxed iframe. Only CLOSED fences match, so a still-streaming artifact
-// renders as a normal code block until complete, then flips to a preview.
-const ARTIFACT_RE = /```(html|svg)\s*\n([\s\S]*?)```/g;
+// Self-contained ```html / ```svg fences render as sandboxed-iframe artifacts;
+// ```mermaid fences render as client-side SVG diagrams. Only CLOSED fences match,
+// so a still-streaming block stays a normal code block until complete, then flips
+// to its rich rendering (this also avoids mid-stream re-mend scrambling).
+const BLOCK_RE = /```(html|svg|mermaid)\s*\n([\s\S]*?)```/g;
 
-// Markdown splits text into ordered segments of plain markdown and html/svg
-// artifacts, rendering each in place so prose and previews interleave correctly.
+// Markdown splits text into ordered segments of plain markdown and rich blocks
+// (artifacts/diagrams), rendering each in place so prose and visuals interleave.
 function Markdown({ text }: { text: string }) {
   const parts: React.ReactNode[] = [];
   let last = 0;
   let i = 0;
-  for (const m of text.matchAll(ARTIFACT_RE)) {
+  for (const m of text.matchAll(BLOCK_RE)) {
     const start = m.index ?? 0;
     if (start > last) {
       parts.push(<StreamMarkdown key={`md${i}`} text={text.slice(last, start)} />);
     }
-    parts.push(<Artifact key={`art${i}`} lang={m[1] as "html" | "svg"} code={m[2]} />);
+    const lang = m[1];
+    if (lang === "mermaid") {
+      parts.push(<Mermaid key={`mer${i}`} code={m[2]} />);
+    } else {
+      parts.push(<Artifact key={`art${i}`} lang={lang as "html" | "svg"} code={m[2]} />);
+    }
     last = start + m[0].length;
     i++;
   }
@@ -46,6 +52,41 @@ function Markdown({ text }: { text: string }) {
     parts.push(<StreamMarkdown key={`md${i}`} text={text.slice(last)} />);
   }
   return <>{parts}</>;
+}
+
+// Mermaid renders a diagram to SVG client-side. mermaid is lazy-imported so its
+// weight only loads when a diagram actually appears. securityLevel "strict"
+// sanitizes the generated SVG (mitigates the known mermaid label XSS).
+function Mermaid({ code }: { code: string }) {
+  const [svg, setSvg] = useState("");
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const mermaid = (await import("mermaid")).default;
+        mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
+        const id = "m" + Math.random().toString(36).slice(2);
+        const { svg } = await mermaid.render(id, code);
+        if (alive) setSvg(svg);
+      } catch (e) {
+        if (alive) setError(e instanceof Error ? e.message : String(e));
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [code]);
+  if (error)
+    return (
+      <pre className={styles.artifactCode}>
+        mermaid error: {error}
+        {"\n\n"}
+        {code}
+      </pre>
+    );
+  if (!svg) return <pre className={styles.artifactCode}>{code}</pre>;
+  return <div className={styles.mermaid} dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
 // Artifact renders a self-contained HTML/SVG document in a sandboxed iframe

@@ -167,9 +167,11 @@ wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
 
   manager
     .attach(id)
-    .then(({ ms, replay }) => {
+    .then(({ ms }) => {
       session = ms.session;
-      for (const line of replay) sendRaw(line);
+      // No event replay: the client rebuilds committed history from get_messages
+      // and reconciles to the authoritative state on agent_end. Replaying the
+      // in-flight turn here would double-count it against that snapshot.
       unsubscribe = ms.subscribe(sendRaw);
       for (const raw of queue) dispatch(raw);
       queue.length = 0;

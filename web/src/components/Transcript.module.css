@@ -179,3 +179,17 @@
   border-radius: 10px;
   margin: 4px 14px;
 }
+
+.mermaid {
+  display: flex;
+  justify-content: center;
+  margin: 8px 14px;
+  padding: 12px;
+  background: #1a1d24;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
