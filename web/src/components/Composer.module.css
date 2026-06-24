@@ -48,3 +48,25 @@
   background: var(--error);
   color: #0f1117;
 }
+
+.mic {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--panel-2);
+}
+.mic:active {
+  background: var(--panel-2);
+}
+
+.micOn {
+  background: var(--error);
+  color: #0f1117;
+  border-color: var(--error);
+  animation: micPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes micPulse {
+  50% {
+    opacity: 0.55;
+  }
+}
