@@ -163,20 +163,51 @@
   padding: 0.15em 0.4em;
 }
 
-/* Code blocks (Shiki wraps in <pre><code> with inline styles). */
-.markdown pre {
+/* Code blocks — Shiki renders <pre><code> with inline colour styles.
+   We wrap in .codeWrap to position the copy button. */
+.codeWrap {
+  position: relative;
   margin: 0.6em 0;
   border-radius: 8px;
-  overflow-x: auto;
+  overflow: hidden;
   max-width: 100%;
+}
+.codePre {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 0.82em;
   line-height: 1.6;
+  -webkit-overflow-scrolling: touch;
 }
-.markdown pre code {
+.codePre code {
   background: none;
   padding: 0;
   font-size: inherit;
   border-radius: 0;
+}
+.copyBtn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.1);
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 1;
+}
+.codeWrap:hover .copyBtn,
+.codeWrap:focus-within .copyBtn {
+  opacity: 1;
+}
+.copyDone {
+  color: var(--ok);
+  opacity: 1 !important;
 }
 
 /* Blockquote */

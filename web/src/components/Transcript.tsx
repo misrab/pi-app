@@ -4,6 +4,30 @@ import type { Block } from "../hooks/useSession";
 import { SkeletonBubble } from "./Skeleton";
 import styles from "./Transcript.module.css";
 
+// Custom <pre> renderer — gives us a copy button without Streamdown's
+// Tailwind-dependent code block chrome (which breaks without Tailwind).
+function CodePre({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) {
+  const preRef = useRef<HTMLPreElement>(null);
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    const text = preRef.current?.querySelector("code")?.innerText ?? "";
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <div className={styles.codeWrap}>
+      <button className={`${styles.copyBtn} ${copied ? styles.copyDone : ""}`} onClick={copy}>
+        {copied ? "✓" : "Copy"}
+      </button>
+      <pre ref={preRef} className={styles.codePre} {...props}>{children}</pre>
+    </div>
+  );
+}
+
+const markdownComponents = { pre: CodePre };
+
 // Streamdown renders model markdown safely: images, tables, links, code
 // (Shiki-highlighted), plus mermaid/math. parseIncompleteMarkdown keeps partial
 // syntax (half-typed ```/**) from flickering mid-stream. urlTransform passthrough
@@ -16,6 +40,8 @@ function StreamMarkdown({ text }: { text: string }) {
       animated={false}
       urlTransform={(url) => url}
       shikiTheme={["github-light", "github-dark"]}
+      controls={false}
+      components={markdownComponents}
       className={styles.markdown}
     >
       {text}
