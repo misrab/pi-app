@@ -1,0 +1,73 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--panel-2);
+  background: var(--bg);
+}
+
+.sessions {
+  width: 40px;
+  height: 40px;
+  font-size: 1.2rem;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.model {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--panel);
+  border-radius: 10px;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+
+.modelName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.caret {
+  color: var(--muted);
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.pill {
+  font-size: 0.72rem;
+  color: var(--accent);
+  background: #1a2138;
+  padding: 6px 10px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.pill:active {
+  background: #232c4a;
+}
+
+.askActive {
+  color: #f87171;
+  background: #2a1a1a;
+}
+
+.askActive:active {
+  background: #3a2020;
+}

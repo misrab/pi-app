@@ -1,96 +1,29 @@
 .header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: calc(8px + var(--safe-top)) 12px 8px;
+  justify-content: center;
+  padding: calc(8px + var(--safe-top)) 16px 8px;
   border-bottom: 1px solid var(--panel-2);
   background: var(--bg);
-}
-
-.session {
-  width: 40px;
-  height: 40px;
-  font-size: 1.2rem;
-  color: var(--text);
-  flex-shrink: 0;
-}
-
-.model {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: var(--panel);
-  border-radius: 10px;
-  color: var(--text);
-  max-width: 60%;
-}
-
-.modelName {
-  font-size: 0.9rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.think {
-  font-size: 0.72rem;
-  color: var(--accent);
-  background: #1a2138;
-  padding: 6px 10px;
-  border-radius: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.think:active {
-  background: #232c4a;
-}
-
-.caret {
-  color: var(--muted);
-  font-size: 0.7rem;
-}
-
-.askBtn {
-  font-size: 1rem;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  color: var(--text);
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-
-.askActive {
-  background: #2a1a1a;
-  color: #f87171;
-}
-
-.right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  position: relative;
 }
 
 .sessionName {
-  font-size: 0.78rem;
-  color: var(--muted);
-  max-width: 120px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 80%;
 }
 
 .dot {
+  position: absolute;
+  right: 16px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  flex-shrink: 0;
 }
 
 .open {
