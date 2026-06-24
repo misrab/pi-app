@@ -123,6 +123,30 @@
   height: auto;
   border-radius: 8px;
 }
+/* Streamdown ships Tailwind-class markup but this app has no Tailwind, so
+   tables render unstyled. Give them sane styling here. */
+.markdown table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: auto;
+  max-width: 100%;
+  display: block;
+  overflow-x: auto;
+}
+.markdown th,
+.markdown td {
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  padding: 4px 10px;
+  text-align: left;
+}
+.markdown th {
+  font-weight: 600;
+  background: var(--panel-2, rgba(255, 255, 255, 0.04));
+}
+/* Safety net: never let any residual animation hide content. */
+.markdown [data-sd-animate] {
+  opacity: 1 !important;
+}
 
 /* HTML/SVG artifact previews. */
 .artifact {

@@ -13,6 +13,7 @@ function StreamMarkdown({ text }: { text: string }) {
   return (
     <Streamdown
       parseIncompleteMarkdown
+      animated={false}
       urlTransform={(url) => url}
       shikiTheme={["github-light", "github-dark"]}
       className={styles.markdown}
