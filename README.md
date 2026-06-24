@@ -93,4 +93,7 @@ make dev-docker   # build + run, seeding config from ~/.pi/agent → http://loca
 
 Push to `main` → GitHub Actions builds and pushes `ghcr.io/misrab/pi-app:latest`
 → tiberius pulls the new digest and restarts the container. HTTPS (required for
-the installable mobile PWA) is provided by tiberius via `tailscale serve`.
+the installable mobile PWA) is provided by tiberius's Caddy reverse proxy at the
+app's own hostname (`pi.h.misrab.xyz`) with an auto-renewed Let's Encrypt cert —
+one hostname per app, so each installs as its own PWA. Set via `vhost:` in the
+tiberius `cluster.yml`.
