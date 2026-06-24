@@ -35,10 +35,12 @@ export function App() {
         model={session.model}
         thinkingLevel={session.thinkingLevel}
         askMode={session.askMode}
+        planMode={session.planMode}
         onOpenSession={() => setSheet("session")}
         onOpenModel={() => setSheet("model")}
         onCycleThinking={session.cycleThinking}
         onToggleAskMode={session.toggleAskMode}
+        onCyclePlanMode={session.cyclePlanMode}
       />
 
       <Composer

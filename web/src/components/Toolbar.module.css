@@ -71,3 +71,12 @@
 .askActive:active {
   background: #3a2020;
 }
+
+.planActive {
+  color: #86efac;
+  background: #1a2a1a;
+}
+
+.planActive:active {
+  background: #243224;
+}

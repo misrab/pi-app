@@ -1,4 +1,4 @@
-import type { Model, ThinkingLevel } from "../api/types";
+import type { Model, PlanMode, ThinkingLevel } from "../api/types";
 import { Skeleton } from "./Skeleton";
 import styles from "./Toolbar.module.css";
 
@@ -7,10 +7,12 @@ interface Props {
   model: Model | null;
   thinkingLevel: ThinkingLevel;
   askMode: boolean;
+  planMode: PlanMode;
   onOpenSession: () => void;
   onOpenModel: () => void;
   onCycleThinking: () => void;
   onToggleAskMode: () => void;
+  onCyclePlanMode: () => void;
 }
 
 export function Toolbar({
@@ -18,10 +20,12 @@ export function Toolbar({
   model,
   thinkingLevel,
   askMode,
+  planMode,
   onOpenSession,
   onOpenModel,
   onCycleThinking,
   onToggleAskMode,
+  onCyclePlanMode,
 }: Props) {
   return (
     <div className={styles.toolbar}>
@@ -49,6 +53,13 @@ export function Toolbar({
           title={askMode ? "Ask mode (read-only) — click to disable" : "Enable ask mode (read-only)"}
         >
           {askMode ? "ask" : "write"}
+        </button>
+        <button
+          className={`${styles.pill} ${planMode !== "off" ? styles.planActive : ""}`}
+          onClick={onCyclePlanMode}
+          title={planMode === "off" ? "Enter plan mode" : planMode === "plan" ? "Planning — tap to implement" : "Implementing — tap to finish"}
+        >
+          {planMode === "off" ? "plan" : planMode === "plan" ? "plan ✎" : "impl ⚡"}
         </button>
       </div>
     </div>

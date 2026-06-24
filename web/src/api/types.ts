@@ -2,6 +2,7 @@
 // See: pi-coding-agent/docs/rpc.md
 
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
+export type PlanMode = "off" | "plan" | "impl";
 
 export interface Model {
   id: string;

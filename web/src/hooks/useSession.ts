@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { RpcClient, type ConnectionStatus } from "../api/rpc";
-import type { Event, Model, SessionStats, StoredMessage, ThinkingLevel } from "../api/types";
+import type { Event, Model, PlanMode, SessionStats, StoredMessage, ThinkingLevel } from "../api/types";
 
 // A Block is one renderable unit in the transcript.
 export type Block =
@@ -203,6 +203,7 @@ export function useSession() {
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [sessionName, setSessionName] = useState<string | undefined>();
   const [askMode, setAskMode] = useState(false);
+  const [planMode, setPlanMode] = useState<PlanMode>("off");
 
   // On every (re)attach we rebuild the transcript from committed history
   // (get_messages). While that async load is in flight, live events are buffered
@@ -279,10 +280,32 @@ export function useSession() {
   const sendPrompt = useCallback(
     (text: string) => {
       dispatch({ type: "user", text });
-      client.send({ type: "prompt", message: text });
+      if (planMode === "plan") {
+        // Delegate to plan-mode extension: it will send the message internally.
+        client.send({ type: "run_command", name: "plan", args: text });
+      } else {
+        client.send({ type: "prompt", message: text });
+      }
     },
-    [client],
+    [client, planMode],
   );
+
+  const cyclePlanMode = useCallback(async () => {
+    if (planMode === "off") {
+      // Enter plan mode — tools go read-only via the extension.
+      // User will type the task and send it; sendPrompt intercepts it.
+      setPlanMode("plan");
+    } else if (planMode === "plan") {
+      // Switch to implement: run the /implement command which reads the latest plan.
+      dispatch({ type: "user", text: "[implementing plan…]" });
+      await client.request({ type: "run_command", name: "implement", args: "" });
+      setPlanMode("impl");
+    } else {
+      // Done: exit plan mode.
+      await client.request({ type: "run_command", name: "done", args: "" });
+      setPlanMode("off");
+    }
+  }, [client, planMode]);
 
   const abort = useCallback(() => client.send({ type: "abort" }), [client]);
 
@@ -292,6 +315,7 @@ export function useSession() {
   const newSession = useCallback(async () => {
     dispatch({ type: "reset" });
     setStats(null);
+    setPlanMode("off");
     client.switchTo(undefined);
   }, [client]);
 
@@ -355,6 +379,8 @@ export function useSession() {
     cycleThinking,
     askMode,
     toggleAskMode,
+    planMode,
+    cyclePlanMode,
     refreshState,
     refreshStats,
   };
