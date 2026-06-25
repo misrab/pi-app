@@ -73,14 +73,17 @@
 }
 
 /* ── Unified input box ───────────────────────────────────────────────────── */
-/* Single border wrapping textarea + footer buttons, like Claude.ai */
 .inputBox {
   position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 4px 4px 4px 2px;
   background: var(--panel);
   border: 1px solid var(--panel-2);
   border-radius: 16px;
   transition: border-color 0.15s, box-shadow 0.15s;
-  overflow: hidden; /* clips the drag overlay to the rounded corners */
+  overflow: hidden;
 }
 
 .inputBox.focused {
@@ -117,8 +120,8 @@
    overflow:hidden is the key fix: eliminates the native scrollbar entirely
    and prevents the browser painting a scrollbar flash during height changes. */
 .textarea {
+  flex: 1;
   display: block;
-  width: 100%;
   resize: none;
   border: none;
   outline: none;
@@ -127,29 +130,22 @@
   font: inherit;
   font-size: 16px; /* 16px prevents iOS auto-zoom on focus */
   line-height: 1.5;
-  padding: 12px 14px 4px;
-  overflow: hidden;      /* ← no scrollbar, no jerk */
+  padding: 7px 4px;
+  overflow: hidden;
   overscroll-behavior: none;
-  min-height: 44px;
+  min-height: 34px;
 }
 
 .textarea::placeholder {
   color: var(--muted);
 }
 
-/* ── Footer: paperclip left, send/mic right ──────────────────────────────── */
-.footer {
+/* ── Right-side action buttons (mic + send/stop) ─────────────────────────── */
+.actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 4px 8px 8px;
-}
-
-.footerLeft,
-.footerRight {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
 .fileInput {

@@ -217,7 +217,7 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
         </div>
       )}
 
-      {/* Unified input box — single border, like Claude */}
+      {/* Unified input box — single border, buttons inline with textarea */}
       <div className={boxClass}>
 
         {/* Drag overlay inside the box */}
@@ -228,7 +228,16 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
           </div>
         )}
 
-        {/* Textarea — no border, transparent bg, overflow:hidden (key to no scrollbar/jerk) */}
+        <button
+          className={styles.iconBtn}
+          onClick={() => fileRef.current?.click()}
+          disabled={disabled}
+          aria-label="Attach file"
+          title="Attach image or text file"
+        >
+          <PaperclipIcon />
+        </button>
+
         <textarea
           ref={textareaRef}
           className={styles.textarea}
@@ -243,47 +252,30 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
           onPaste={onPaste}
           onFocus={() => {
             setFocused(true);
-            // iOS doesn't resize the layout for the keyboard, so nudge the
-            // input into view once the keyboard has animated in.
             setTimeout(() => textareaRef.current?.scrollIntoView({ block: "nearest" }), 300);
           }}
           onBlur={() => setFocused(false)}
         />
 
-        {/* Footer: left actions | right actions */}
-        <div className={styles.footer}>
-          <div className={styles.footerLeft}>
+        <div className={styles.actions}>
+          {speech.supported && (
             <button
-              className={styles.iconBtn}
-              onClick={() => fileRef.current?.click()}
+              className={`${styles.iconBtn} ${speech.listening ? styles.micActive : ""}`}
+              onClick={toggleMic}
               disabled={disabled}
-              aria-label="Attach file"
-              title="Attach image or text file"
+              aria-label={speech.listening ? "Stop dictation" : "Dictate"}
             >
-              <PaperclipIcon />
+              <MicIcon />
             </button>
-          </div>
-
-          <div className={styles.footerRight}>
-            {speech.supported && (
-              <button
-                className={`${styles.iconBtn} ${speech.listening ? styles.micActive : ""}`}
-                onClick={toggleMic}
-                disabled={disabled}
-                aria-label={speech.listening ? "Stop dictation" : "Dictate"}
-              >
-                <MicIcon />
+          )}
+          {streaming
+            ? <button className={`${styles.actionBtn} ${styles.stopBtn}`} onClick={onAbort} aria-label="Stop">
+                <StopIcon />
               </button>
-            )}
-            {streaming
-              ? <button className={`${styles.actionBtn} ${styles.stopBtn}`} onClick={onAbort} aria-label="Stop">
-                  <StopIcon />
-                </button>
-              : <button type="submit" className={`${styles.actionBtn} ${styles.sendBtn}`} disabled={!canSend} aria-label="Send">
-                  <SendIcon />
-                </button>
-            }
-          </div>
+            : <button type="submit" className={`${styles.actionBtn} ${styles.sendBtn}`} disabled={!canSend} aria-label="Send">
+                <SendIcon />
+              </button>
+          }
         </div>
       </div>
     </form>
