@@ -60,8 +60,22 @@ export type Command =
 
 export interface ImageContent {
   type: "image";
+  /** Raw base64 (no data-URI prefix). */
   data: string;
   mimeType: string;
+}
+
+/** A file the user has attached before sending a prompt. */
+export interface Attachment {
+  /** Client-side stable key for React lists / removal. */
+  id: string;
+  name: string;
+  kind: "image" | "text";
+  mimeType: string;
+  /** Raw base64 for images; UTF-8 text string for text files. */
+  data: string;
+  /** data-URI for image preview thumbnails. Empty string for text files. */
+  previewUrl: string;
 }
 
 // ---- Responses (pi -> client, correlated by id) --------------------------
