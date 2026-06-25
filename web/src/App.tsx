@@ -8,11 +8,12 @@ import { Transcript } from "./components/Transcript";
 import { ActivityBar } from "./components/ActivityBar";
 import { Composer } from "./components/Composer";
 import { ModelPicker } from "./components/ModelPicker";
+import { PersonaPicker } from "./components/PersonaPicker";
 import { SessionList } from "./components/SessionList";
 import { Sheet } from "./components/Sheet";
 import styles from "./App.module.css";
 
-type SheetKind = "model" | "session" | null;
+type SheetKind = "model" | "persona" | "session" | null;
 
 export function App() {
   const session = useSession();
@@ -50,8 +51,10 @@ export function App() {
             thinkingLevel={session.thinkingLevel}
             askMode={session.askMode}
             planMode={session.planMode}
+            persona={session.persona}
             onOpenSession={() => setSheet("session")}
             onOpenModel={() => setSheet("model")}
+            onOpenPersona={() => setSheet("persona")}
             onCycleThinking={session.cycleThinking}
             onToggleAskMode={session.toggleAskMode}
             onCyclePlanMode={session.cyclePlanMode}
@@ -66,6 +69,7 @@ export function App() {
           />
 
           <ModelPicker open={sheet === "model"} onClose={() => setSheet(null)} session={session} />
+          <PersonaPicker open={sheet === "persona"} onClose={() => setSheet(null)} session={session} />
           {!isDesktop && (
             <Sheet open={sheet === "session"} title="Sessions" onClose={() => setSheet(null)}>
               <SessionList

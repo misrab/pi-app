@@ -3,7 +3,7 @@
 // the built React frontend and a small JSON API.
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFile, stat } from "node:fs/promises";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
 import { resolveConfig, installPackages, startConfigPoll } from "./config.js";
@@ -68,6 +68,9 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
   if (url.pathname === "/api/settings" && req.method === "GET") {
     return json(res, readEnabledModels(agentDir));
   }
+  if (url.pathname === "/api/personas" && req.method === "GET") {
+    return json(res, readPersonas(agentDir));
+  }
 
   return serveStatic(url.pathname, res);
 }
@@ -85,6 +88,39 @@ function readEnabledModels(dir: string): { enabledModels?: string[] } {
   } catch {
     return {};
   }
+}
+
+function readPersonas(dir: string): { personas: { name: string; label: string; description?: string }[] } {
+  const personasDir = join(dir || `${process.env.HOME}/.pi/agent`, "personas");
+  try {
+    const personas = readdirSync(personasDir)
+      .filter((f) => f.endsWith(".md"))
+      .map((f) => {
+        const name = f.replace(/\.md$/, "");
+        const raw = readFileSync(join(personasDir, f), "utf8");
+        const meta = parsePersonaFrontmatter(raw);
+        return {
+          name,
+          label: meta.label ?? name,
+          ...(meta.description ? { description: meta.description } : {}),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return { personas };
+  } catch {
+    return { personas: [] };
+  }
+}
+
+function parsePersonaFrontmatter(raw: string): { label?: string; description?: string } {
+  const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (!m) return {};
+  const meta: Record<string, string> = {};
+  for (const line of m[1].split("\n")) {
+    const idx = line.indexOf(":");
+    if (idx > 0) meta[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+  }
+  return { label: meta.label, description: meta.description };
 }
 
 const MIME: Record<string, string> = {

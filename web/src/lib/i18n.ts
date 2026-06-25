@@ -8,6 +8,7 @@ const strings = {
   activityConnecting: "Connecting…",
   activityReady: "Ready",
   queuedBadge: "queued",
+  personaTitle: "Persona",
 } as const;
 
 type StringKey = keyof typeof strings;

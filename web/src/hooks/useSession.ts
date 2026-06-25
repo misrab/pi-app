@@ -2,6 +2,17 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import { RpcClient, sessionIdFromPath, type ConnectionStatus } from "../api/rpc";
 import type { Attachment, Event, ImageContent, Model, PlanMode, SessionStats, StoredMessage, ThinkingLevel } from "../api/types";
 
+const PERSONA_KEY = "pi-app:persona";
+const DEFAULT_PERSONA = "coding";
+
+function storedPersona(): string {
+  try {
+    return localStorage.getItem(PERSONA_KEY) ?? DEFAULT_PERSONA;
+  } catch {
+    return DEFAULT_PERSONA;
+  }
+}
+
 export type ActivityState = "idle" | "thinking" | "tool" | "working" | "queued" | "reconnecting" | "connecting";
 
 // A Block is one renderable unit in the transcript.
@@ -227,6 +238,7 @@ export function useSession() {
   const [sessionId, setSessionId] = useState<string>(() => client.session);
   const [askMode, setAskMode] = useState(false);
   const [planMode, setPlanMode] = useState<PlanMode>("off");
+  const [persona, setPersonaState] = useState(storedPersona);
 
   const loading = useRef(false);
   const buffer = useRef<Event[]>([]);
@@ -298,17 +310,42 @@ export function useSession() {
     }
   }, [client]);
 
+  const applyPersona = useCallback(
+    async (name: string) => {
+      await client.request({ type: "run_command", name: "persona", args: name });
+      setPersonaState(name);
+    },
+    [client],
+  );
+
+  const setPersona = useCallback(
+    async (name: string) => {
+      await applyPersona(name);
+      try {
+        localStorage.setItem(PERSONA_KEY, name);
+      } catch {
+        /* ignore */
+      }
+    },
+    [applyPersona],
+  );
+
   const onAttached = useCallback(async () => {
     const gen = ++attachGen.current;
     loading.current = true;
     buffer.current = [];
-    await Promise.all([refreshState(), refreshStats(), loadMessages()]);
+    await Promise.all([
+      refreshState(),
+      refreshStats(),
+      loadMessages(),
+      applyPersona(storedPersona()),
+    ]);
     if (gen !== attachGen.current) return;
     const queued = buffer.current;
     buffer.current = [];
     loading.current = false;
     flushEvents(queued);
-  }, [flushEvents, loadMessages, refreshState, refreshStats]);
+  }, [flushEvents, loadMessages, refreshState, refreshStats, applyPersona]);
 
   onAttachedRef.current = onAttached;
 
@@ -486,6 +523,8 @@ export function useSession() {
     toggleAskMode,
     planMode,
     cyclePlanMode,
+    persona,
+    setPersona,
   };
 }
 

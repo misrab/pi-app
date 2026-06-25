@@ -9,8 +9,10 @@ interface Props {
   thinkingLevel: ThinkingLevel;
   askMode: boolean;
   planMode: PlanMode;
+  persona: string;
   onOpenSession: () => void;
   onOpenModel: () => void;
+  onOpenPersona: () => void;
   onCycleThinking: () => void;
   onToggleAskMode: () => void;
   onCyclePlanMode: () => void;
@@ -22,8 +24,10 @@ export function Toolbar({
   thinkingLevel,
   askMode,
   planMode,
+  persona,
   onOpenSession,
   onOpenModel,
+  onOpenPersona,
   onCycleThinking,
   onToggleAskMode,
   onCyclePlanMode,
@@ -45,6 +49,14 @@ export function Toolbar({
       </button>
 
       <div className={styles.controls}>
+        <button
+          className={styles.pill}
+          onClick={onOpenPersona}
+          disabled={initializing}
+          title="Switch persona"
+        >
+          {persona} ▾
+        </button>
         {model?.reasoning && thinkingLevel !== "off" && (
           <button className={styles.pill} onClick={onCycleThinking} title="Cycle thinking level">
             {thinkingLevel}
