@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import type { Block } from "../hooks/useSession";
 import { t } from "../lib/i18n";
@@ -155,21 +155,67 @@ interface Props {
   initializing: boolean;
 }
 
-export function Transcript({ blocks, streaming, initializing }: Props) {
-  const endRef = useRef<HTMLDivElement>(null);
+// Distance from bottom (px) within which we consider the user "at the bottom".
+const BOTTOM_THRESHOLD = 80;
 
-  // Auto-scroll to bottom as content streams in.
+export function Transcript({ blocks, streaming, initializing }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  // Whether auto-scroll is active. Pauses when user scrolls up; resumes when
+  // they scroll back down or a new user message starts a fresh turn.
+  const autoScrollRef = useRef(true);
+  const [, forceRender] = useState(0);
+
+  const isNearBottom = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < BOTTOM_THRESHOLD;
+  }, []);
+
+  // User manually scrolled — decide whether to pause or resume auto-scroll.
+  const onScroll = useCallback(() => {
+    const near = isNearBottom();
+    if (autoScrollRef.current !== near) {
+      autoScrollRef.current = near;
+      forceRender((n) => n + 1); // re-render to show/hide the jump button
+    }
+  }, [isNearBottom]);
+
+  // Re-enable auto-scroll when a new user message appears (fresh turn start).
+  const lastRole = blocks[blocks.length - 1]?.kind;
+  const prevLastRole = useRef(lastRole);
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
+    if (lastRole === "user" && prevLastRole.current !== "user") {
+      autoScrollRef.current = true;
+    }
+    prevLastRole.current = lastRole;
+  }, [lastRole]);
+
+  // Auto-scroll to bottom while enabled.
+  useEffect(() => {
+    if (autoScrollRef.current) {
+      endRef.current?.scrollIntoView({ block: "end" });
+    }
   }, [blocks, streaming]);
 
+  const jumpToBottom = useCallback(() => {
+    autoScrollRef.current = true;
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    forceRender((n) => n + 1);
+  }, []);
+
+  const showJump = !autoScrollRef.current;
+
   return (
+    <div style={{ position: "relative" }}>
     <div
+      ref={containerRef}
       className={styles.transcript}
       role="log"
       aria-live="polite"
       aria-relevant="additions"
       aria-busy={streaming}
+      onScroll={onScroll}
     >
       {initializing && (
         <>
@@ -189,6 +235,16 @@ export function Transcript({ blocks, streaming, initializing }: Props) {
         <div className={styles.spinner}>…</div>
       )}
       <div ref={endRef} />
+    </div>
+    {showJump && (
+      <button
+        className={styles.jumpBtn}
+        onClick={jumpToBottom}
+        aria-label="Jump to latest"
+      >
+        ↓ Latest
+      </button>
+    )}
     </div>
   );
 }
