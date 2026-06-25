@@ -1,58 +1,17 @@
 .composer {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 12px calc(8px + var(--safe-bottom));
-  border-top: 1px solid var(--panel-2);
+  padding: 8px 12px calc(10px + var(--safe-bottom));
   background: var(--bg);
-  position: relative;
-  transition: background 0.15s;
 }
 
-/* ── Drag-over overlay ──────────────────────────────────────────────────── */
-.dragOver {
-  background: color-mix(in srgb, var(--accent) 6%, var(--bg));
-}
-
-.dropOverlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
-  border: 2px dashed var(--accent);
-  border-radius: 14px;
-  color: var(--accent);
-  font-size: 0.92rem;
-  font-weight: 600;
-  pointer-events: none;
-  z-index: 10;
-}
-
-/* ── Unsupported file notice ─────────────────────────────────────────────── */
-.unsupported {
-  font-size: 0.78rem;
-  color: var(--error);
-  padding: 4px 4px 6px;
-  animation: fadeIn 0.15s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ── Attachment preview bar ──────────────────────────────────────────────── */
+/* ── Attachment chips ────────────────────────────────────────────────────── */
 .attachBar {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 4px 0 8px;
+  padding: 0 2px 8px;
 }
 
-.attachChip {
+.chip {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -60,25 +19,26 @@
   border: 1px solid var(--panel-2);
   border-radius: 8px;
   padding: 4px 6px 4px 5px;
-  max-width: 180px;
-  animation: fadeIn 0.15s ease;
+  max-width: 200px;
+  animation: slideUp 0.15s ease;
 }
 
-.attachThumb {
-  width: 32px;
-  height: 32px;
+.chipThumb {
+  width: 28px;
+  height: 28px;
   object-fit: cover;
-  border-radius: 5px;
+  border-radius: 4px;
   flex-shrink: 0;
 }
 
-/* File icon wrapper – give it the same visual size as a thumb */
-.attachChip > svg {
-  flex-shrink: 0;
+.chipIcon {
+  display: flex;
+  align-items: center;
   color: var(--tool);
+  flex-shrink: 0;
 }
 
-.attachName {
+.chipName {
   font-size: 0.75rem;
   color: var(--text);
   white-space: nowrap;
@@ -88,118 +48,163 @@
   min-width: 0;
 }
 
-.attachRemove {
+.chipRemove {
   flex-shrink: 0;
-  font-size: 1rem;
+  font-size: 1.1rem;
   line-height: 1;
   color: var(--muted);
   padding: 0 2px;
-  border-radius: 4px;
+  border-radius: 3px;
   transition: color 0.1s;
 }
-.attachRemove:hover {
+.chipRemove:hover { color: var(--error); }
+
+/* ── Unsupported notice ──────────────────────────────────────────────────── */
+.unsupported {
+  font-size: 0.78rem;
   color: var(--error);
+  padding: 0 2px 6px;
+  animation: slideUp 0.15s ease;
 }
 
-/* ── Input row ───────────────────────────────────────────────────────────── */
-.inputRow {
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Unified input box ───────────────────────────────────────────────────── */
+/* Single border wrapping textarea + footer buttons, like Claude.ai */
+.inputBox {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--panel-2);
+  border-radius: 16px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  overflow: hidden; /* clips the drag overlay to the rounded corners */
+}
+
+.inputBox.focused {
+  border-color: rgba(45, 212, 191, 0.45);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.08);
+}
+
+.inputBox.dragOver {
+  border-color: var(--accent);
+  border-style: dashed;
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.12);
+}
+
+/* ── Drop overlay inside the box ─────────────────────────────────────────── */
+.dropOverlay {
+  position: absolute;
+  inset: 0;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
-  align-items: flex-end;
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 600;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 15px;
+}
+
+/* ── Textarea ────────────────────────────────────────────────────────────── */
+/* No border, no background — visually lives inside .inputBox.
+   overflow:hidden is the key fix: eliminates the native scrollbar entirely
+   and prevents the browser painting a scrollbar flash during height changes. */
+.textarea {
+  display: block;
+  width: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px; /* 16px prevents iOS auto-zoom on focus */
+  line-height: 1.5;
+  padding: 12px 14px 4px;
+  overflow: hidden;      /* ← no scrollbar, no jerk */
+  overscroll-behavior: none;
+  min-height: 44px;
+}
+
+.textarea::placeholder {
+  color: var(--muted);
+}
+
+/* ── Footer: paperclip left, send/mic right ──────────────────────────────── */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 8px;
+}
+
+.footerLeft,
+.footerRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .fileInput {
   display: none;
 }
 
-.input {
-  flex: 1;
-  resize: none;
-  background: var(--panel);
-  color: var(--text);
-  border: 1px solid var(--panel-2);
-  border-radius: 22px;
-  padding: 12px 16px;
-  /* 16px prevents iOS focus-zoom */
-  font-size: 16px;
-  line-height: 1.4;
-  min-height: 46px;
-  max-height: 160px;
-  transition: border-color 0.15s;
-}
-
-.input::placeholder {
-  color: var(--muted);
-}
-
-.input:focus {
-  outline: none;
-  border-color: rgba(45, 212, 191, 0.5);
-}
-
-/* ── Icon buttons ────────────────────────────────────────────────────────── */
-.btn {
-  flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+/* ── Ghost icon buttons (paperclip, mic) ─────────────────────────────────── */
+.iconBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.15s, transform 0.1s;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   color: var(--muted);
+  transition: color 0.15s, background 0.15s;
 }
-
-.btn:active {
-  transform: scale(0.93);
+.iconBtn:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--panel-2);
 }
-
-/* Paperclip — ghost style, teal on hover */
-.btn:first-of-type:hover:not(:disabled) {
-  color: var(--accent);
-}
-
-.send {
-  background: var(--accent);
-  color: #fff;
-}
-
-.send:disabled {
+.iconBtn:disabled {
   opacity: 0.35;
 }
 
-.sendQueued {
-  background: var(--panel-2);
-  color: var(--muted);
-  border: 1px solid var(--panel-2);
+.micActive {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+  animation: micPulse 1.2s ease-in-out infinite;
+}
+@keyframes micPulse {
+  50% { opacity: 0.5; }
 }
 
-.sendQueued:disabled {
+/* ── Action buttons (send / stop) ────────────────────────────────────────── */
+.actionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.actionBtn:active { transform: scale(0.9); }
+
+.sendBtn {
+  background: var(--accent);
+  color: #fff;
+}
+.sendBtn:disabled {
   opacity: 0.3;
 }
 
-.abort {
-  background: var(--panel-2);
-  color: var(--text);
-  border: 1px solid rgba(248, 113, 113, 0.4);
-}
-
-.mic {
-  background: var(--panel);
-  border: 1px solid var(--panel-2);
-}
-
-.mic:active {
-  background: var(--panel-2);
-}
-
-.micOn {
-  background: rgba(248, 113, 113, 0.15);
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.4);
-  animation: micPulse 1.2s ease-in-out infinite;
-}
-
-@keyframes micPulse {
-  50% { opacity: 0.55; }
+.stopBtn {
+  background: var(--text);
+  color: var(--bg);
 }
