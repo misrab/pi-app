@@ -127,6 +127,11 @@ const wss = new WebSocketServer({ server, path: "/ws" });
 const WS_PING_INTERVAL_MS = 30_000;
 
 wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
+  if (manager.isDraining()) {
+    ws.close(1012, "server draining");
+    return;
+  }
+
   const url = new URL(req.url ?? "/", "http://localhost");
   const id = url.searchParams.get("session");
   if (!id) {
@@ -191,11 +196,11 @@ wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
 
   manager
     .attach(id)
-    .then(({ ms }) => {
+    .then(({ ms, replay }) => {
       session = ms.session;
-      // No event replay: the client rebuilds committed history from get_messages
-      // and reconciles to the authoritative state on agent_end. Replaying the
-      // in-flight turn here would double-count it against that snapshot.
+      // Replay the in-flight turn so a reconnecting client sees live progress.
+      // get_messages remains authoritative on agent_end (client reconciles then).
+      for (const line of replay) sendRaw(line);
       unsubscribe = ms.subscribe(sendRaw);
       for (const raw of queue) dispatch(raw);
       queue.length = 0;
@@ -222,8 +227,20 @@ server.listen(PORT, () => {
   }
 });
 
+// Slightly under tiberius stop_grace (150s) so we exit cleanly before SIGKILL.
+const DRAIN_MS = num("PI_DRAIN_MS", 140_000);
+
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, () => {
-    void manager.closeAll().finally(() => process.exit(0));
+    void (async () => {
+      console.log("draining: waiting for in-flight turns to finish…");
+      manager.setDraining();
+      wss.close();
+      server.close();
+      const idle = await manager.waitForIdle(DRAIN_MS);
+      if (!idle) console.warn("drain timeout — exiting with turns still running");
+      else console.log("drain complete");
+      process.exit(0);
+    })();
   });
 }

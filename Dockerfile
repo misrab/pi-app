@@ -1,5 +1,5 @@
 # --- build frontend + server -------------------------------------------------
-# git is needed to install the make-pwa frontend dep from GitHub.
+# git is needed to install the make-pwa / web-kit frontend deps from GitHub.
 FROM node:22-alpine AS build
 RUN apk add --no-cache git
 WORKDIR /app

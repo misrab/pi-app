@@ -90,6 +90,7 @@ export class Manager {
   private creating = new Map<string, Promise<ManagedSession>>();
   private authStorage: any;
   private modelRegistry: any;
+  private draining = false;
 
   constructor(private opts: ManagerOptions) {
     const authPath = opts.agentDir ? `${opts.agentDir}/auth.json` : undefined;
@@ -99,8 +100,29 @@ export class Manager {
     setInterval(() => void this.reap(), REAP_INTERVAL_MS).unref();
   }
 
+  /** True once SIGTERM drain has started — no new attaches. */
+  isDraining(): boolean {
+    return this.draining;
+  }
+
+  setDraining(): void {
+    this.draining = true;
+  }
+
+  /** Wait until every live session is idle, or the deadline passes. */
+  async waitForIdle(deadlineMs: number): Promise<boolean> {
+    const deadline = Date.now() + deadlineMs;
+    while (Date.now() < deadline) {
+      const running = [...this.sessions.values()].some((s) => s.status === "running");
+      if (!running) return true;
+      await sleep(500);
+    }
+    return false;
+  }
+
   /** Attach to (or create) the session for id. Caller must detach() on close. */
   async attach(id: string): Promise<{ ms: ManagedSession; replay: string[] }> {
+    if (this.draining) throw new Error("server draining");
     const existing = this.sessions.get(id);
     if (existing) {
       existing.attached++;
@@ -210,6 +232,10 @@ export class Manager {
 // Bind extensions for a non-interactive host (mirrors print-mode). No UI
 // context: dialog/notify UI is a no-op, which matches the previous behaviour
 // where the browser ignored extension UI requests.
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 async function bindExtensions(session: any): Promise<void> {
   await session.bindExtensions({
     mode: "print",

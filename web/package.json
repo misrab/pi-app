@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "make-pwa": "github:misrab/make-pwa",
+    "make-pwa": "github:misrab/web-kit",
     "mermaid": "^11.15.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

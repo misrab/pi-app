@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import type { Block } from "../hooks/useSession";
+import { t } from "../lib/i18n";
 import { SkeletonBubble } from "./Skeleton";
 import { PiLogo } from "./PiLogo";
 import styles from "./Transcript.module.css";
@@ -198,8 +199,8 @@ function BlockView({ block }: { block: Block }) {
           )}
           {block.text && <span>{block.text}</span>}
           {block.queued && (
-            <span className={styles.queuedBadge} title="Waiting for current response to finish">
-              <QueuedIcon /> queued
+            <span className={styles.queuedBadge} title={t("queuedBadge")}>
+              <QueuedIcon /> {t("queuedBadge")}
             </span>
           )}
         </div>
@@ -235,7 +236,7 @@ function ToolView({ block }: { block: Extract<Block, { kind: "tool" }> }) {
     <div className={`${styles.bubble} ${styles.tool}`}>
       <div className={styles.toolHead}>
         <span className={styles.toolName}>{block.name}</span>
-        {!block.done && <span className={styles.toolPending}>running…</span>}
+        {!block.done && <span className={styles.toolPending}>{t("activityTool")}</span>}
       </div>
       <pre className={styles.toolArgs}>{JSON.stringify(block.args, null, 2)}</pre>
       {block.result !== undefined && (

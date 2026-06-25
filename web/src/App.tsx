@@ -4,6 +4,7 @@ import { useSession } from "./hooks/useSession";
 import { Header } from "./components/Header";
 import { Toolbar } from "./components/Toolbar";
 import { Transcript } from "./components/Transcript";
+import { ActivityBar } from "./components/ActivityBar";
 import { Composer } from "./components/Composer";
 import { ModelPicker } from "./components/ModelPicker";
 import { SessionMenu } from "./components/SessionMenu";
@@ -29,6 +30,8 @@ export function App() {
         streaming={session.streaming}
         initializing={session.initializing}
       />
+
+      <ActivityBar activity={session.activity} queuedCount={session.queuedCount} />
 
       <Toolbar
         initializing={session.initializing}

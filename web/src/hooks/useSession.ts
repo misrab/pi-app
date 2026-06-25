@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { RpcClient, type ConnectionStatus } from "../api/rpc";
 import type { Attachment, Event, ImageContent, Model, PlanMode, SessionStats, StoredMessage, ThinkingLevel } from "../api/types";
+
+export type ActivityState = "idle" | "thinking" | "tool" | "working" | "queued" | "reconnecting" | "connecting";
 
 // A Block is one renderable unit in the transcript.
 export type Block =
@@ -22,14 +24,15 @@ export type Block =
 interface State {
   blocks: Block[];
   streaming: boolean;
+  queuedCount: number;
 }
 
 type Action =
   | { type: "user"; text: string; imageUrls?: string[]; queued?: boolean }
-  | { type: "dequeue" }   // mark the first queued user block as sent
   | { type: "event"; event: Event }
   | { type: "load"; messages: StoredMessage[] }
-  | { type: "reset" };
+  | { type: "reset" }
+  | { type: "queue_sync"; steering: string[]; followUp: string[] };
 
 let uid = 0;
 const nextId = () => `b${++uid}`;
@@ -37,30 +40,30 @@ const nextId = () => `b${++uid}`;
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "reset":
-      return { blocks: [], streaming: false };
+      return { blocks: [], streaming: false, queuedCount: 0 };
 
     case "user":
-      return { ...state, blocks: [...state.blocks, { id: nextId(), kind: "user", text: action.text, imageUrls: action.imageUrls, queued: action.queued }] };
+      return {
+        ...state,
+        blocks: [...state.blocks, { id: nextId(), kind: "user", text: action.text, imageUrls: action.imageUrls, queued: action.queued }],
+      };
 
-    case "dequeue": {
-      // Clear the queued flag on the first pending user block so it renders as sent.
-      const idx = state.blocks.findIndex((b) => b.kind === "user" && b.queued);
-      if (idx === -1) return state;
-      const blocks = state.blocks.slice();
-      const b = blocks[idx] as Extract<Block, { kind: "user" }>;
-      blocks[idx] = { ...b, queued: false };
-      return { ...state, blocks };
+    case "queue_sync": {
+      const queuedTexts = new Set([...action.steering, ...action.followUp]);
+      const blocks = state.blocks.map((b) =>
+        b.kind === "user" ? { ...b, queued: queuedTexts.has(b.text) } : b,
+      );
+      return { ...state, blocks, queuedCount: queuedTexts.size };
     }
 
     case "load":
-      return { blocks: messagesToBlocks(action.messages), streaming: false };
+      return { blocks: messagesToBlocks(action.messages), streaming: false, queuedCount: 0 };
 
     case "event":
       return handleEvent(state, action.event);
   }
 }
 
-// messagesToBlocks rebuilds the transcript from stored messages (on resume).
 function messagesToBlocks(messages: StoredMessage[] | null | undefined): Block[] {
   const blocks: Block[] = [];
   for (const m of messages ?? []) {
@@ -115,7 +118,10 @@ function handleEvent(state: State, event: Event): State {
       return { ...state, streaming: true };
 
     case "agent_end":
-      return { ...state, streaming: false };
+      return { ...state, streaming: false, queuedCount: 0 };
+
+    case "queue_update":
+      return reducer(state, { type: "queue_sync", steering: event.steering, followUp: event.followUp });
 
     case "message_update": {
       const d = event.assistantMessageEvent;
@@ -193,7 +199,6 @@ function extractText(content?: { type: string; text?: string; data?: string; mim
     .join("\n");
 }
 
-// Extract image content blocks from any content array and convert to data-URIs.
 function contentImages(content: unknown): string[] {
   if (!Array.isArray(content)) return [];
   return (content as { type: string; data?: string; mimeType?: string }[])
@@ -201,14 +206,24 @@ function contentImages(content: unknown): string[] {
     .map((c) => `data:${c.mimeType ?? "image/png"};base64,${c.data}`);
 }
 
+function deriveActivity(streaming: boolean, status: ConnectionStatus, blocks: Block[], queuedCount: number): ActivityState {
+  if (status === "connecting") return "connecting";
+  if (status === "closed") return "reconnecting";
+  if (!streaming) return queuedCount > 0 ? "queued" : "idle";
+  const last = blocks[blocks.length - 1];
+  if (last?.kind === "thinking") return "thinking";
+  if (last?.kind === "tool" && !last.done) return "tool";
+  return "working";
+}
+
 export function useSession() {
   const clientRef = useRef<RpcClient | null>(null);
   if (!clientRef.current) clientRef.current = new RpcClient();
   const client = clientRef.current;
 
-  const [state, dispatch] = useReducer(reducer, { blocks: [], streaming: false });
+  const [state, dispatch] = useReducer(reducer, { blocks: [], streaming: false, queuedCount: 0 });
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
-  const [initializing, setInitializing] = useState(true); // true until first model loads
+  const [initializing, setInitializing] = useState(true);
   const [model, setModel] = useState<Model | null>(null);
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>("medium");
   const [stats, setStats] = useState<SessionStats | null>(null);
@@ -217,18 +232,35 @@ export function useSession() {
   const [askMode, setAskMode] = useState(false);
   const [planMode, setPlanMode] = useState<PlanMode>("off");
 
-  // On every (re)attach we rebuild the transcript from committed history
-  // (get_messages). While that async load is in flight, live events are buffered
-  // so they are not wiped by the subsequent "load" dispatch, then flushed in
-  // arrival order. get_messages is authoritative: we reconcile to it again on
-  // agent_end so any streaming race (e.g. a mid-stream reconnect) self-heals.
   const loading = useRef(false);
   const buffer = useRef<Event[]>([]);
-  // Incremented each time we attach to a session. onAttached checks this so a
-  // stale async run (from a previous connect) doesn't clobber a newer one.
   const attachGen = useRef(0);
 
-  // Wire up the client once.
+  const refreshStats = useCallback(async () => {
+    const res = await client.request<SessionStats>({ type: "get_session_stats" });
+    if (res.success && res.data) setStats(res.data);
+  }, [client]);
+
+  const loadMessages = useCallback(async () => {
+    const res = await client.request<{ messages: StoredMessage[] }>({ type: "get_messages" });
+    if (res.success && res.data?.messages) dispatch({ type: "load", messages: res.data.messages });
+  }, [client]);
+
+  const handleAgentEnd = useCallback(() => {
+    void refreshStats();
+    void loadMessages();
+  }, [refreshStats, loadMessages]);
+
+  const flushEvents = useCallback(
+    (events: Event[]) => {
+      for (const event of events) {
+        dispatch({ type: "event", event });
+        if (event.type === "agent_end") handleAgentEnd();
+      }
+    },
+    [handleAgentEnd],
+  );
+
   useEffect(() => {
     const offEvent = client.onEvent((event) => {
       if (loading.current) {
@@ -236,21 +268,7 @@ export function useSession() {
         return;
       }
       dispatch({ type: "event", event });
-      if (event.type === "agent_end") {
-        void refreshStats();
-        const next = promptQueue.current.shift();
-        if (next) {
-          // A queued message is ready to send. Mark its optimistic block as
-          // sent, then dispatch to the server — but do NOT call loadMessages
-          // yet because the message hasn't been committed; doing so would
-          // wipe the block from the transcript until the next agent_end.
-          dispatch({ type: "dequeue" });
-          sendPromptNow(next, undefined, /* skipDispatch */ true);
-        } else {
-          // Queue empty — reconcile to the authoritative committed state.
-          void loadMessages();
-        }
-      }
+      if (event.type === "agent_end") handleAgentEnd();
     });
     const offStatus = client.onStatus((s) => {
       setStatus(s);
@@ -265,43 +283,11 @@ export function useSession() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // onAttached runs after the socket (re)opens: load committed history, then
-  // flush any events buffered during the load (replay + live).
-  const onAttached = useCallback(async () => {
-    const gen = ++attachGen.current;
-    loading.current = true;
-    buffer.current = [];
-    await Promise.all([refreshState(), refreshStats(), loadMessages()]);
-    // If the socket closed and reopened again while we were loading, a newer
-    // onAttached has already started — bail to avoid clobbering its state.
-    if (gen !== attachGen.current) return;
-    const queued = buffer.current;
-    buffer.current = [];
-    loading.current = false;
-    // Re-show any locally-queued messages that survived the reconnect.
-    for (const text of promptQueue.current) {
-      dispatch({ type: "user", text, queued: true });
-    }
-    for (const event of queued) {
-      dispatch({ type: "event", event });
-      if (event.type === "agent_end") {
-        void refreshStats();
-        const next = promptQueue.current.shift();
-        if (next) {
-          dispatch({ type: "dequeue" });
-          sendPromptNow(next, undefined, /* skipDispatch */ true);
-        } else {
-          void loadMessages();
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client]);
-
   const refreshState = useCallback(async () => {
     const res = await client.request<{
       model: Model | null;
       thinkingLevel: ThinkingLevel;
+      isStreaming?: boolean;
       sessionName?: string;
     }>({ type: "get_state" });
     if (res.success && res.data) {
@@ -309,21 +295,29 @@ export function useSession() {
       setThinkingLevel(res.data.thinkingLevel);
       setSessionName(res.data.sessionName);
       setInitializing(false);
+      if (res.data.isStreaming) dispatch({ type: "event", event: { type: "agent_start" } });
     }
   }, [client]);
 
-  const refreshStats = useCallback(async () => {
-    const res = await client.request<SessionStats>({ type: "get_session_stats" });
-    if (res.success && res.data) setStats(res.data);
-  }, [client]);
+  const onAttached = useCallback(async () => {
+    const gen = ++attachGen.current;
+    loading.current = true;
+    buffer.current = [];
+    await Promise.all([refreshState(), refreshStats(), loadMessages()]);
+    if (gen !== attachGen.current) return;
+    const queued = buffer.current;
+    buffer.current = [];
+    loading.current = false;
+    flushEvents(queued);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client, flushEvents, loadMessages, refreshState, refreshStats]);
 
   const sendPromptNow = useCallback(
-    (text: string, attachments?: Attachment[], skipDispatch = false) => {
+    (text: string, attachments?: Attachment[], opts?: { skipDispatch?: boolean; streamingBehavior?: "steer" | "followUp" }) => {
       const images: ImageContent[] = (attachments ?? [])
         .filter((a) => a.kind === "image")
         .map((a) => ({ type: "image", data: a.data, mimeType: a.mimeType }));
 
-      // Text-file attachments: prepend each as a fenced code block.
       const textPrefix = (attachments ?? [])
         .filter((a) => a.kind === "text")
         .map((a) => `**${a.name}**\n\`\`\`\n${a.data}\n\`\`\`\n`)
@@ -332,10 +326,8 @@ export function useSession() {
       const message = textPrefix ? `${textPrefix}\n${text}` : text;
       const imageUrls = images.map((img) => `data:${img.mimeType};base64,${img.data}`);
 
-      // skipDispatch=true when the block was already shown as queued — we only
-      // need to send to the server; the dequeue action already updated the block.
-      if (!skipDispatch) {
-        dispatch({ type: "user", text, imageUrls: imageUrls.length ? imageUrls : undefined });
+      if (!opts?.skipDispatch) {
+        dispatch({ type: "user", text, imageUrls: imageUrls.length ? imageUrls : undefined, queued: opts?.streamingBehavior === "followUp" });
       }
 
       if (planMode === "plan") {
@@ -345,6 +337,7 @@ export function useSession() {
           type: "prompt",
           message,
           ...(images.length ? { images } : {}),
+          ...(opts?.streamingBehavior ? { streamingBehavior: opts.streamingBehavior } : {}),
         });
       }
     },
@@ -354,10 +347,7 @@ export function useSession() {
   const sendPrompt = useCallback(
     (text: string, attachments?: Attachment[]) => {
       if (state.streaming) {
-        // Show immediately as queued; will be sent after current turn ends.
-        // Attachments are not queued — user should resend with them explicitly.
-        promptQueue.current.push(text);
-        dispatch({ type: "user", text, queued: true });
+        sendPromptNow(text, undefined, { streamingBehavior: "followUp" });
       } else {
         sendPromptNow(text, attachments);
       }
@@ -367,37 +357,23 @@ export function useSession() {
 
   const cyclePlanMode = useCallback(async () => {
     if (planMode === "off") {
-      // Enter plan mode — tools go read-only via the extension.
-      // User will type the task and send it; sendPrompt intercepts it.
       setPlanMode("plan");
     } else if (planMode === "plan") {
-      // Switch to implement: run the /implement command which reads the latest plan.
       dispatch({ type: "user", text: "[implementing plan…]" });
       await client.request({ type: "run_command", name: "implement", args: "" });
       setPlanMode("impl");
     } else {
-      // Done: exit plan mode.
       await client.request({ type: "run_command", name: "done", args: "" });
       setPlanMode("off");
     }
   }, [client, planMode]);
 
-  // Queue of messages submitted while the agent is streaming.
-  const promptQueue = useRef<string[]>([]);
-
   const abort = useCallback(() => {
     client.send({ type: "abort" });
-    // Optimistically clear streaming — agent_end may not fire if the SDK swallows it.
-    dispatch({ type: "event", event: { type: "agent_end" } as Event });
-    promptQueue.current = []; // discard any queued messages on abort
   }, [client]);
 
-  // Start a fresh session by re-attaching the socket with no session id; the
-  // backend spawns a new pi process (unify-on-attach). The open handler then
-  // loads (empty) history; loadMessages is a no-op for a fresh session.
   const newSession = useCallback(async () => {
     dispatch({ type: "reset" });
-    promptQueue.current = [];
     setModel(null);
     setThinkingLevel("medium");
     setSessionName(undefined);
@@ -409,18 +385,9 @@ export function useSession() {
     setSessionId(client.session);
   }, [client]);
 
-  // Load the current conversation's messages into the transcript.
-  const loadMessages = useCallback(async () => {
-    const res = await client.request<{ messages: StoredMessage[] }>({ type: "get_messages" });
-    if (res.success && res.data?.messages) dispatch({ type: "load", messages: res.data.messages });
-  }, [client]);
-
-  // Switch sessions by re-attaching the socket to the target id (unify-on-
-  // attach). The previous session's pi process keeps running in the background.
   const switchSession = useCallback(
     async (sessionPath: string) => {
       dispatch({ type: "reset" });
-      promptQueue.current = [];
       setModel(null);
       setThinkingLevel("medium");
       setSessionName(undefined);
@@ -435,7 +402,6 @@ export function useSession() {
     [client],
   );
 
-  // Hard-stop a session's pi process (the file persists for cold resume).
   const stopSession = useCallback(async (sessionPath: string) => {
     await fetch(`/api/sessions/stop?id=${encodeURIComponent(sessionPath)}`, { method: "POST" });
   }, []);
@@ -453,17 +419,23 @@ export function useSession() {
     setAskMode((prev) => !prev);
   }, [client]);
 
-  // Cycle thinking level (mirrors the CLI's shift+tab).
   const cycleThinking = useCallback(async () => {
     const res = await client.request<{ level: ThinkingLevel } | null>({ type: "cycle_thinking_level" });
     if (res.success && res.data) setThinkingLevel(res.data.level);
   }, [client]);
+
+  const activity = useMemo(
+    () => deriveActivity(state.streaming, status, state.blocks, state.queuedCount),
+    [state.streaming, status, state.blocks, state.queuedCount],
+  );
 
   return {
     client,
     sessionId,
     blocks: state.blocks,
     streaming: state.streaming,
+    activity,
+    queuedCount: state.queuedCount,
     status,
     initializing,
     model,
