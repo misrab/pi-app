@@ -58,23 +58,29 @@
   display: none;
 }
 
-/* ── Mobile: wrap into two rows ──────────────────────────────────────────── */
+/* ── Mobile: compact single row, pills scroll horizontally ───────────────── */
 @media (max-width: 899px) {
   .toolbar {
-    flex-wrap: wrap;
-    row-gap: 4px;
-    padding-bottom: 10px;
+    gap: 6px;
+    padding: 6px 10px;
   }
 
-  /* sessions icon + model picker share the first row */
   .model {
+    flex: 0 1 auto;
+    padding: 5px 10px;
+  }
+
+  .modelName {
+    font-size: 0.82rem;
+  }
+
+  /* pills take the remaining width and scroll if they overflow */
+  .controls {
     flex: 1;
   }
 
-  /* pills fill the full second row and scroll if still needed */
-  .controls {
-    flex: 0 0 100%;
-    padding-left: 4px;
+  .pill {
+    padding: 5px 8px;
   }
 }
 

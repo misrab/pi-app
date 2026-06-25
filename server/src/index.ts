@@ -133,6 +133,16 @@ const MIME: Record<string, string> = {
   ".webmanifest": "application/manifest+json",
 };
 
+// Vite emits content-hashed files under /assets — safe to cache forever.
+// Everything else (index.html, sw.js, manifest, icons) must revalidate so a
+// new deploy is picked up immediately instead of being served from a stale
+// browser/PWA cache.
+function cacheControl(pathname: string): string {
+  return pathname.startsWith("/assets/")
+    ? "public, max-age=31536000, immutable"
+    : "no-cache";
+}
+
 async function serveStatic(pathname: string, res: ServerResponse): Promise<void> {
   // Resolve within WEB_DIR; fall back to index.html for SPA routes.
   const rel = normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
@@ -140,12 +150,18 @@ async function serveStatic(pathname: string, res: ServerResponse): Promise<void>
   try {
     if ((await stat(file)).isDirectory()) file = join(file, "index.html");
     const body = await readFile(file);
-    res.writeHead(200, { "content-type": MIME[extname(file)] ?? "application/octet-stream" });
+    res.writeHead(200, {
+      "content-type": MIME[extname(file)] ?? "application/octet-stream",
+      "cache-control": cacheControl(pathname),
+    });
     res.end(body);
   } catch {
     try {
       const body = await readFile(join(WEB_DIR, "index.html"));
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      res.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-cache",
+      });
       res.end(body);
     } catch {
       res.writeHead(404).end("not found");
