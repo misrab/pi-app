@@ -3,8 +3,8 @@
 
 PORT ?= 8080
 
-.PHONY: dev dev-server dev-web build build-web build-server install free-port \
-        docker dev-docker dev-stop dev-logs docker-check
+.PHONY: dev dev-server dev-web build build-web build-server install web-install \
+        free-port docker dev-docker dev-stop dev-logs docker-check test
 
 # --- local development ------------------------------------------------------
 
@@ -18,12 +18,19 @@ dev: install free-port
 dev-server: build-web
 	cd server && PORT=$(PORT) PI_CWD=$(HOME) npm run dev
 
-install:
-	@cd web && [ -d node_modules ] || npm install
+install: web-install
 	@cd server && [ -d node_modules ] || npm install
+
+web-install:
+	@cd web && [ -d node_modules ] || npm install
 
 free-port:
 	@lsof -ti:$(PORT) | xargs kill -9 2>/dev/null || true
+
+# --- tests ------------------------------------------------------------------
+
+test: web-install
+	cd web && npm test
 
 # --- production build -------------------------------------------------------
 
