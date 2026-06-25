@@ -31,6 +31,23 @@
   border-bottom-right-radius: 4px;
   white-space: pre-wrap;
   border: 1px solid var(--user-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.userImages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.userImage {
+  max-width: 200px;
+  max-height: 180px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--user-border);
 }
 
 /* Claude-style assistant: icon on the left, text to the right, no bubble. */

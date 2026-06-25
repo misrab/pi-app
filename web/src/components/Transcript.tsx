@@ -186,7 +186,18 @@ export function Transcript({ blocks, streaming, initializing }: Props) {
 function BlockView({ block }: { block: Block }) {
   switch (block.kind) {
     case "user":
-      return <div className={`${styles.bubble} ${styles.user}`}>{block.text}</div>;
+      return (
+        <div className={`${styles.bubble} ${styles.user}`}>
+          {block.imageUrls && block.imageUrls.length > 0 && (
+            <div className={styles.userImages}>
+              {block.imageUrls.map((url, i) => (
+                <img key={i} src={url} alt="attachment" className={styles.userImage} />
+              ))}
+            </div>
+          )}
+          {block.text && <span>{block.text}</span>}
+        </div>
+      );
     case "text":
       return (
         <div className={styles.assistantRow}>

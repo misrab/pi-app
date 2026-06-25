@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { RpcClient, type ConnectionStatus } from "../api/rpc";
-import type { Event, Model, PlanMode, SessionStats, StoredMessage, ThinkingLevel } from "../api/types";
+import type { Attachment, Event, ImageContent, Model, PlanMode, SessionStats, StoredMessage, ThinkingLevel } from "../api/types";
 
 // A Block is one renderable unit in the transcript.
 export type Block =
-  | { id: string; kind: "user"; text: string }
+  | { id: string; kind: "user"; text: string; imageUrls?: string[] }
   | { id: string; kind: "text"; text: string }
   | { id: string; kind: "thinking"; text: string }
   | { id: string; kind: "image"; url: string }
@@ -25,7 +25,7 @@ interface State {
 }
 
 type Action =
-  | { type: "user"; text: string }
+  | { type: "user"; text: string; imageUrls?: string[] }
   | { type: "event"; event: Event }
   | { type: "load"; messages: StoredMessage[] }
   | { type: "reset" };
@@ -39,7 +39,7 @@ function reducer(state: State, action: Action): State {
       return { blocks: [], streaming: false };
 
     case "user":
-      return { ...state, blocks: [...state.blocks, { id: nextId(), kind: "user", text: action.text }] };
+      return { ...state, blocks: [...state.blocks, { id: nextId(), kind: "user", text: action.text, imageUrls: action.imageUrls }] };
 
     case "load":
       return { blocks: messagesToBlocks(action.messages), streaming: false };
@@ -283,26 +283,44 @@ export function useSession() {
   }, [client]);
 
   const sendPromptNow = useCallback(
-    (text: string) => {
-      dispatch({ type: "user", text });
+    (text: string, attachments?: Attachment[]) => {
+      const images: ImageContent[] = (attachments ?? [])
+        .filter((a) => a.kind === "image")
+        .map((a) => ({ type: "image", data: a.data, mimeType: a.mimeType }));
+
+      // Text-file attachments: prepend each as a fenced code block.
+      const textPrefix = (attachments ?? [])
+        .filter((a) => a.kind === "text")
+        .map((a) => `**${a.name}**\n\`\`\`\n${a.data}\n\`\`\`\n`)
+        .join("\n");
+
+      const message = textPrefix ? `${textPrefix}\n${text}` : text;
+      const imageUrls = images.map((img) => `data:${img.mimeType};base64,${img.data}`);
+
+      dispatch({ type: "user", text, imageUrls: imageUrls.length ? imageUrls : undefined });
+
       if (planMode === "plan") {
-        client.send({ type: "run_command", name: "plan", args: text });
+        client.send({ type: "run_command", name: "plan", args: message });
       } else {
-        client.send({ type: "prompt", message: text });
+        client.send({
+          type: "prompt",
+          message,
+          ...(images.length ? { images } : {}),
+        });
       }
     },
     [client, planMode],
   );
 
   const sendPrompt = useCallback(
-    (text: string) => {
+    (text: string, attachments?: Attachment[]) => {
       if (state.streaming) {
         // Queue the message — it will be sent when the current turn ends.
+        // Attachments are not queued (same as Claude — send now would be confusing).
         promptQueue.current.push(text);
-        // Show it in the transcript immediately so the user sees it was accepted.
         dispatch({ type: "user", text });
       } else {
-        sendPromptNow(text);
+        sendPromptNow(text, attachments);
       }
     },
     [state.streaming, sendPromptNow],
