@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SessionInfo, SessionStats } from "../api/types";
 import type { Session } from "../hooks/useSession";
 import { Sheet } from "./Sheet";
 import { RenameDialog } from "./RenameDialog";
 import { Skeleton } from "./Skeleton";
 import styles from "./SessionMenu.module.css";
+
+const POLL_MS = 2000; // refresh session list while menu is open
 
 interface Props {
   open: boolean;
@@ -14,9 +16,10 @@ interface Props {
 
 export function SessionMenu({ open, onClose, session }: Props) {
   const { sessionName, stats, newSession, switchSession, stopSession, renameSession } = session;
-  const [list, setList] = useState<SessionInfo[] | null>(null); // null = loading
+  const [list, setList] = useState<SessionInfo[] | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const pollRef = useRef<number | null>(null);
 
   const refresh = (showLoading = false) => {
     if (showLoading) setList(null);
@@ -26,9 +29,23 @@ export function SessionMenu({ open, onClose, session }: Props) {
       .catch(() => setList([]));
   };
 
+  // Initial load + polling while open.
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      if (pollRef.current !== null) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
+    }
     void refresh(true);
+    pollRef.current = window.setInterval(() => void refresh(), POLL_MS);
+    return () => {
+      if (pollRef.current !== null) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
   }, [open]);
 
   const start = async () => {
@@ -46,11 +63,19 @@ export function SessionMenu({ open, onClose, session }: Props) {
   };
 
   const stop = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // don't trigger resume
+    e.stopPropagation();
     setBusy(true);
     await stopSession(id);
     await refresh();
     setBusy(false);
+  };
+
+  // Wait for rename to persist before refreshing the list — the header updates
+  // via useSession.refreshState inside renameSession; the list needs an extra
+  // fetch so the saved-session name is also current.
+  const handleRename = async (name: string) => {
+    await renameSession(name);
+    await refresh();
   };
 
   return (
@@ -63,13 +88,13 @@ export function SessionMenu({ open, onClose, session }: Props) {
             ＋ New session
           </button>
           <button className={styles.secondary} onClick={() => setRenaming(true)} disabled={busy}>
-            Rename {sessionName ? `“${sessionName}”` : "current"}
+            Rename {sessionName ? `"${sessionName}"` : "current"}
           </button>
         </div>
 
         <div className={styles.listLabel}>Resume</div>
         <ul className={styles.list}>
-          {list === null && [1,2,3].map(i => (
+          {list === null && [1, 2, 3].map((i) => (
             <li key={i} style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
               <Skeleton width="60%" height="0.9em" />
               <Skeleton width="85%" height="0.75em" />
@@ -82,7 +107,9 @@ export function SessionMenu({ open, onClose, session }: Props) {
                   <StatusDot status={s.status} />
                   {s.name}
                 </span>
-                {s.preview && s.preview !== s.name && <span className={styles.preview}>{s.preview}</span>}
+                {s.preview && s.preview !== s.name && (
+                  <span className={styles.preview}>{s.preview}</span>
+                )}
                 <span className={styles.time}>{relative(s.modified)}</span>
               </button>
               {s.status === "running" && (
@@ -98,7 +125,9 @@ export function SessionMenu({ open, onClose, session }: Props) {
               )}
             </li>
           ))}
-          {list !== null && list.length === 0 && <li className={styles.empty}>No saved sessions yet.</li>}
+          {list !== null && list.length === 0 && (
+            <li className={styles.empty}>No saved sessions yet.</li>
+          )}
         </ul>
       </Sheet>
 
@@ -106,7 +135,7 @@ export function SessionMenu({ open, onClose, session }: Props) {
         open={renaming}
         initial={sessionName ?? ""}
         onClose={() => setRenaming(false)}
-        onSave={(name) => void renameSession(name)}
+        onSave={handleRename}
       />
     </>
   );
@@ -124,7 +153,7 @@ function Stats({ stats }: { stats: SessionStats }) {
 }
 
 function StatusDot({ status }: { status: SessionInfo["status"] }) {
-  const title = status === "running" ? "running" : status === "idle" ? "idle (process alive)" : "stopped";
+  const title = status === "running" ? "running" : status === "idle" ? "idle" : "stopped";
   return <span className={`${styles.dot} ${styles[status]}`} title={title} aria-label={title} />;
 }
 

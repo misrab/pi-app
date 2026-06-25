@@ -213,6 +213,9 @@ export function useSession() {
   // agent_end so any streaming race (e.g. a mid-stream reconnect) self-heals.
   const loading = useRef(false);
   const buffer = useRef<Event[]>([]);
+  // Incremented each time we attach to a session. onAttached checks this so a
+  // stale async run (from a previous connect) doesn't clobber a newer one.
+  const attachGen = useRef(0);
 
   // Wire up the client once.
   useEffect(() => {
@@ -246,9 +249,13 @@ export function useSession() {
   // onAttached runs after the socket (re)opens: load committed history, then
   // flush any events buffered during the load (replay + live).
   const onAttached = useCallback(async () => {
+    const gen = ++attachGen.current;
     loading.current = true;
     buffer.current = [];
     await Promise.all([refreshState(), refreshStats(), loadMessages()]);
+    // If the socket closed and reopened again while we were loading, a newer
+    // onAttached has already started — bail to avoid clobbering its state.
+    if (gen !== attachGen.current) return;
     const queued = buffer.current;
     buffer.current = [];
     loading.current = false;
@@ -359,8 +366,14 @@ export function useSession() {
   // loads (empty) history; loadMessages is a no-op for a fresh session.
   const newSession = useCallback(async () => {
     dispatch({ type: "reset" });
+    promptQueue.current = [];
+    setModel(null);
+    setThinkingLevel("medium");
+    setSessionName(undefined);
     setStats(null);
+    setAskMode(false);
     setPlanMode("off");
+    setInitializing(true);
     client.switchTo(undefined);
     setSessionId(client.session);
   }, [client]);
@@ -376,6 +389,14 @@ export function useSession() {
   const switchSession = useCallback(
     async (sessionPath: string) => {
       dispatch({ type: "reset" });
+      promptQueue.current = [];
+      setModel(null);
+      setThinkingLevel("medium");
+      setSessionName(undefined);
+      setStats(null);
+      setAskMode(false);
+      setPlanMode("off");
+      setInitializing(true);
       client.switchTo(sessionPath);
       setSessionId(client.session);
       return true;
