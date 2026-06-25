@@ -191,23 +191,27 @@ export function Transcript({ blocks, streaming, initializing }: Props) {
     prevLastRole.current = lastRole;
   }, [lastRole]);
 
-  // Auto-scroll to bottom while enabled.
+  // Auto-scroll to bottom while enabled. Scroll the container directly rather
+  // than scrollIntoView — the latter can also scroll ancestor elements and
+  // jank the whole page; setting scrollTop only moves the transcript.
   useEffect(() => {
     if (autoScrollRef.current) {
-      endRef.current?.scrollIntoView({ block: "end" });
+      const el = containerRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
     }
   }, [blocks, streaming]);
 
   const jumpToBottom = useCallback(() => {
     autoScrollRef.current = true;
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const el = containerRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     forceRender((n) => n + 1);
   }, []);
 
   const showJump = !autoScrollRef.current;
 
   return (
-    <div style={{ position: "relative" }}>
+    <div className={styles.scrollHost}>
     <div
       ref={containerRef}
       className={styles.transcript}
