@@ -144,10 +144,18 @@ export function SessionMenu({ open, onClose, session }: Props) {
 
 function Stats({ stats }: { stats: SessionStats }) {
   const ctx = stats.contextUsage;
+  // input+output is what the user actually sent/received.
+  // total includes cache-read tokens which re-count the full context on every
+  // turn and can be 10-100x larger — misleading as a headline figure.
+  const activeTokens = stats.tokens.input + stats.tokens.output;
   return (
     <div className={styles.stats}>
       <Stat label="Cost" value={fmtCost(stats.cost)} />
-      <Stat label="Tokens" value={fmtTokens(stats.tokens.total)} />
+      <Stat
+        label="Tokens"
+        value={fmtTokens(activeTokens)}
+        title={`Input: ${fmtTokens(stats.tokens.input)} · Output: ${fmtTokens(stats.tokens.output)} · Cache read: ${fmtTokens(stats.tokens.cacheRead)}`}
+      />
       {ctx && ctx.percent != null && <Stat label="Context" value={fmtPercent(ctx.percent)} />}
     </div>
   );
@@ -158,9 +166,9 @@ function StatusDot({ status }: { status: SessionInfo["status"] }) {
   return <span className={`${styles.dot} ${styles[status]}`} title={title} aria-label={title} />;
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, title }: { label: string; value: string; title?: string }) {
   return (
-    <div className={styles.stat}>
+    <div className={styles.stat} title={title}>
       <div className={styles.statValue}>{value}</div>
       <div className={styles.statLabel}>{label}</div>
     </div>
