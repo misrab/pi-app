@@ -4,7 +4,7 @@ import type { Attachment, Event, ImageContent, Model, PlanMode, SessionStats, St
 
 // A Block is one renderable unit in the transcript.
 export type Block =
-  | { id: string; kind: "user"; text: string; imageUrls?: string[] }
+  | { id: string; kind: "user"; text: string; imageUrls?: string[]; queued?: boolean }
   | { id: string; kind: "text"; text: string }
   | { id: string; kind: "thinking"; text: string }
   | { id: string; kind: "image"; url: string }
@@ -25,7 +25,8 @@ interface State {
 }
 
 type Action =
-  | { type: "user"; text: string; imageUrls?: string[] }
+  | { type: "user"; text: string; imageUrls?: string[]; queued?: boolean }
+  | { type: "dequeue" }   // mark the first queued user block as sent
   | { type: "event"; event: Event }
   | { type: "load"; messages: StoredMessage[] }
   | { type: "reset" };
@@ -39,7 +40,17 @@ function reducer(state: State, action: Action): State {
       return { blocks: [], streaming: false };
 
     case "user":
-      return { ...state, blocks: [...state.blocks, { id: nextId(), kind: "user", text: action.text, imageUrls: action.imageUrls }] };
+      return { ...state, blocks: [...state.blocks, { id: nextId(), kind: "user", text: action.text, imageUrls: action.imageUrls, queued: action.queued }] };
+
+    case "dequeue": {
+      // Clear the queued flag on the first pending user block so it renders as sent.
+      const idx = state.blocks.findIndex((b) => b.kind === "user" && b.queued);
+      if (idx === -1) return state;
+      const blocks = state.blocks.slice();
+      const b = blocks[idx] as Extract<Block, { kind: "user" }>;
+      blocks[idx] = { ...b, queued: false };
+      return { ...state, blocks };
+    }
 
     case "load":
       return { blocks: messagesToBlocks(action.messages), streaming: false };
@@ -227,10 +238,18 @@ export function useSession() {
       dispatch({ type: "event", event });
       if (event.type === "agent_end") {
         void refreshStats();
-        void loadMessages(); // reconcile to authoritative committed state
-        // Flush one queued message if present.
         const next = promptQueue.current.shift();
-        if (next) sendPromptNow(next);
+        if (next) {
+          // A queued message is ready to send. Mark its optimistic block as
+          // sent, then dispatch to the server — but do NOT call loadMessages
+          // yet because the message hasn't been committed; doing so would
+          // wipe the block from the transcript until the next agent_end.
+          dispatch({ type: "dequeue" });
+          sendPromptNow(next, undefined, /* skipDispatch */ true);
+        } else {
+          // Queue empty — reconcile to the authoritative committed state.
+          void loadMessages();
+        }
       }
     });
     const offStatus = client.onStatus((s) => {
@@ -259,13 +278,21 @@ export function useSession() {
     const queued = buffer.current;
     buffer.current = [];
     loading.current = false;
+    // Re-show any locally-queued messages that survived the reconnect.
+    for (const text of promptQueue.current) {
+      dispatch({ type: "user", text, queued: true });
+    }
     for (const event of queued) {
       dispatch({ type: "event", event });
       if (event.type === "agent_end") {
         void refreshStats();
-        void loadMessages();
         const next = promptQueue.current.shift();
-        if (next) sendPromptNow(next);
+        if (next) {
+          dispatch({ type: "dequeue" });
+          sendPromptNow(next, undefined, /* skipDispatch */ true);
+        } else {
+          void loadMessages();
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -291,7 +318,7 @@ export function useSession() {
   }, [client]);
 
   const sendPromptNow = useCallback(
-    (text: string, attachments?: Attachment[]) => {
+    (text: string, attachments?: Attachment[], skipDispatch = false) => {
       const images: ImageContent[] = (attachments ?? [])
         .filter((a) => a.kind === "image")
         .map((a) => ({ type: "image", data: a.data, mimeType: a.mimeType }));
@@ -305,7 +332,11 @@ export function useSession() {
       const message = textPrefix ? `${textPrefix}\n${text}` : text;
       const imageUrls = images.map((img) => `data:${img.mimeType};base64,${img.data}`);
 
-      dispatch({ type: "user", text, imageUrls: imageUrls.length ? imageUrls : undefined });
+      // skipDispatch=true when the block was already shown as queued — we only
+      // need to send to the server; the dequeue action already updated the block.
+      if (!skipDispatch) {
+        dispatch({ type: "user", text, imageUrls: imageUrls.length ? imageUrls : undefined });
+      }
 
       if (planMode === "plan") {
         client.send({ type: "run_command", name: "plan", args: message });
@@ -323,10 +354,10 @@ export function useSession() {
   const sendPrompt = useCallback(
     (text: string, attachments?: Attachment[]) => {
       if (state.streaming) {
-        // Queue the message — it will be sent when the current turn ends.
-        // Attachments are not queued (same as Claude — send now would be confusing).
+        // Show immediately as queued; will be sent after current turn ends.
+        // Attachments are not queued — user should resend with them explicitly.
         promptQueue.current.push(text);
-        dispatch({ type: "user", text });
+        dispatch({ type: "user", text, queued: true });
       } else {
         sendPromptNow(text, attachments);
       }

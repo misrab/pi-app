@@ -185,9 +185,10 @@ export function Transcript({ blocks, streaming, initializing }: Props) {
 
 function BlockView({ block }: { block: Block }) {
   switch (block.kind) {
-    case "user":
+    case "user": {
+      const cls = [styles.bubble, styles.user, block.queued ? styles.userQueued : ""].filter(Boolean).join(" ");
       return (
-        <div className={`${styles.bubble} ${styles.user}`}>
+        <div className={cls}>
           {block.imageUrls && block.imageUrls.length > 0 && (
             <div className={styles.userImages}>
               {block.imageUrls.map((url, i) => (
@@ -196,8 +197,14 @@ function BlockView({ block }: { block: Block }) {
             </div>
           )}
           {block.text && <span>{block.text}</span>}
+          {block.queued && (
+            <span className={styles.queuedBadge} title="Waiting for current response to finish">
+              <QueuedIcon /> queued
+            </span>
+          )}
         </div>
       );
+    }
     case "text":
       return (
         <div className={styles.assistantRow}>
@@ -237,5 +244,14 @@ function ToolView({ block }: { block: Extract<Block, { kind: "tool" }> }) {
         </pre>
       )}
     </div>
+  );
+}
+
+function QueuedIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
   );
 }

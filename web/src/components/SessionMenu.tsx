@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { fmtCost, fmtPercent, fmtTokens } from "../lib/fmt";
 import type { SessionInfo, SessionStats } from "../api/types";
 import type { Session } from "../hooks/useSession";
 import { Sheet } from "./Sheet";
@@ -145,9 +146,9 @@ function Stats({ stats }: { stats: SessionStats }) {
   const ctx = stats.contextUsage;
   return (
     <div className={styles.stats}>
-      <Stat label="Cost" value={`$${stats.cost.toFixed(4)}`} />
-      <Stat label="Tokens" value={fmt(stats.tokens.total)} />
-      {ctx && ctx.percent != null && <Stat label="Context" value={`${ctx.percent.toFixed(2)}%`} />}
+      <Stat label="Cost" value={fmtCost(stats.cost)} />
+      <Stat label="Tokens" value={fmtTokens(stats.tokens.total)} />
+      {ctx && ctx.percent != null && <Stat label="Context" value={fmtPercent(ctx.percent)} />}
     </div>
   );
 }
@@ -164,10 +165,6 @@ function Stat({ label, value }: { label: string; value: string }) {
       <div className={styles.statLabel}>{label}</div>
     </div>
   );
-}
-
-function fmt(n: number): string {
-  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
 
 function relative(iso: string): string {
