@@ -1,17 +1,18 @@
 .bar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 1rem;
+  gap: 8px;
+  padding: 6px 16px;
   font-size: 0.75rem;
   color: var(--muted);
   border-bottom: 1px solid var(--panel-2);
   background: var(--panel);
+  flex-shrink: 0;
 }
 
 @media (min-width: 900px) {
   .bar {
-    padding: 0.5rem 1rem;
+    padding: 8px 16px;
   }
 }
 
@@ -20,8 +21,8 @@
 }
 
 .pulse {
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--accent);
   animation: pulse 1.2s ease-in-out infinite;
@@ -41,5 +42,5 @@
 
 .reconnecting,
 .connecting {
-  color: var(--warning, #f59e0b);
+  color: var(--warning);
 }

@@ -1,10 +1,11 @@
 .toolbar {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 6px 12px;
   border-top: 1px solid var(--panel-2);
   background: var(--bg);
+  flex-shrink: 0;
 }
 
 .topRow {
@@ -48,6 +49,19 @@
     flex-shrink: 0;
     max-width: none;
   }
+
+  .pill {
+    flex: 0 0 auto;
+    min-width: auto;
+  }
+}
+
+.modelRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
 }
 
 .model {
@@ -61,6 +75,34 @@
   color: var(--text);
   flex: 1;
   min-width: 0;
+}
+
+.persona {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0 10px;
+  background: var(--panel);
+  border-radius: 10px;
+  color: var(--text);
+  flex-shrink: 0;
+  max-width: 38%;
+  min-width: 0;
+}
+
+.personaName {
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.persona svg {
+  color: var(--muted);
+  flex-shrink: 0;
 }
 
 .modelName {
@@ -83,12 +125,6 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.controls::-webkit-scrollbar {
-  display: none;
 }
 
 .pill {
@@ -96,16 +132,15 @@
   align-items: center;
   justify-content: center;
   height: 30px;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   color: var(--muted);
   background: var(--panel);
-  padding: 0 11px;
+  padding: 0 12px;
   border-radius: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   font-weight: 600;
   white-space: nowrap;
-  flex-shrink: 0;
+  flex: 1;
+  min-width: 0;
   border: 1px solid var(--panel-2);
   transition: color 0.15s, background 0.15s;
 }
@@ -131,7 +166,7 @@
 }
 
 .planActive {
-  color: var(--think);
-  background: color-mix(in srgb, var(--think) 10%, transparent);
-  border-color: color-mix(in srgb, var(--think) 25%, transparent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
 }

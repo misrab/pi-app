@@ -40,26 +40,29 @@ export function Toolbar({
           <MenuIcon />
         </button>
 
-        <button className={styles.model} onClick={onOpenModel} disabled={initializing}>
-          {initializing
-            ? <Skeleton width="100px" height="1em" />
-            : <>
-                <span className={styles.modelName}>{model ? trimModelName(model.name) : "no model"}</span>
-                <ChevronDown />
-              </>
-          }
-        </button>
+        <div className={styles.modelRow}>
+          <button className={styles.model} onClick={onOpenModel} disabled={initializing}>
+            {initializing
+              ? <Skeleton width="100px" height="1em" />
+              : <>
+                  <span className={styles.modelName}>{model ? trimModelName(model.name) : "no model"}</span>
+                  <ChevronDown />
+                </>
+            }
+          </button>
+          <button
+            className={styles.persona}
+            onClick={onOpenPersona}
+            disabled={initializing}
+            title={t("personaTitle")}
+          >
+            <span className={styles.personaName}>{persona}</span>
+            <ChevronDown />
+          </button>
+        </div>
       </div>
 
       <div className={styles.controls}>
-        <button
-          className={styles.pill}
-          onClick={onOpenPersona}
-          disabled={initializing}
-          title="Switch persona"
-        >
-          {persona} ▾
-        </button>
         {model?.reasoning && (
           <button
             className={`${styles.pill} ${thinkingLevel === "off" ? styles.pillOff : styles.thinkActive}`}
