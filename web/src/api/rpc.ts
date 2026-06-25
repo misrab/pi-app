@@ -151,6 +151,11 @@ export class RpcClient {
   }
 
   private rejectAllPending() {
+    // Resolve every pending request immediately with a failure response so their
+    // per-request timeouts get cleared and callers can react without waiting 15s.
+    for (const resolve of this.pending.values()) {
+      resolve({ type: "response", command: "_disconnect", success: false, error: "disconnected" } as Response);
+    }
     this.pending.clear();
   }
 }

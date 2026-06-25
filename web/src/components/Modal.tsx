@@ -4,14 +4,15 @@ import styles from "./Modal.module.css";
 interface Props {
   open: boolean;
   title: string;
-  onClose: () => void;
+  /** Omit to prevent closing (e.g. while saving). */
+  onClose?: () => void;
   children: ReactNode;
 }
 
 /** A centered modal dialog with backdrop. */
 export function Modal({ open, title, onClose, children }: Props) {
   useEffect(() => {
-    if (!open) return;
+    if (!open || !onClose) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
