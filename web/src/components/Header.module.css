@@ -22,6 +22,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 60vw;
+  line-height: 1.2;
 }
 
 /* Theme toggle — sits on the left, mirroring the status dot on the right */

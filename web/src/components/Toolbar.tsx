@@ -35,19 +35,21 @@ export function Toolbar({
 }: Props) {
   return (
     <div className={styles.toolbar}>
-      <button className={styles.sessions} onClick={onOpenSession} aria-label="Sessions">
-        <MenuIcon />
-      </button>
+      <div className={styles.topRow}>
+        <button className={styles.sessions} onClick={onOpenSession} aria-label="Sessions">
+          <MenuIcon />
+        </button>
 
-      <button className={styles.model} onClick={onOpenModel} disabled={initializing}>
-        {initializing
-          ? <Skeleton width="100px" height="1em" />
-          : <>
-              <span className={styles.modelName}>{model ? trimModelName(model.name) : "no model"}</span>
-              <ChevronDown />
-            </>
-        }
-      </button>
+        <button className={styles.model} onClick={onOpenModel} disabled={initializing}>
+          {initializing
+            ? <Skeleton width="100px" height="1em" />
+            : <>
+                <span className={styles.modelName}>{model ? trimModelName(model.name) : "no model"}</span>
+                <ChevronDown />
+              </>
+          }
+        </button>
+      </div>
 
       <div className={styles.controls}>
         <button

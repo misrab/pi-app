@@ -28,7 +28,7 @@ export function App() {
         </aside>
       )}
 
-      <div className={styles.main}>
+      <main className={styles.main}>
         <div className={styles.app}>
           <PwaInstall appName="pi" accentColor="#2dd4bf" />
 
@@ -80,7 +80,7 @@ export function App() {
             </Sheet>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

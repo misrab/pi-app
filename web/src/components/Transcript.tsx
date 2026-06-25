@@ -164,7 +164,13 @@ export function Transcript({ blocks, streaming, initializing }: Props) {
   }, [blocks, streaming]);
 
   return (
-    <div className={styles.transcript}>
+    <div
+      className={styles.transcript}
+      role="log"
+      aria-live="polite"
+      aria-relevant="additions"
+      aria-busy={streaming}
+    >
       {initializing && (
         <>
           <SkeletonBubble align="right" />
@@ -189,7 +195,7 @@ function BlockView({ block }: { block: Block }) {
     case "user": {
       const cls = [styles.bubble, styles.user, block.queued ? styles.userQueued : ""].filter(Boolean).join(" ");
       return (
-        <div className={cls}>
+        <div className={cls} role="article" aria-label="You">
           {block.imageUrls && block.imageUrls.length > 0 && (
             <div className={styles.userImages}>
               {block.imageUrls.map((url, i) => (
@@ -208,7 +214,7 @@ function BlockView({ block }: { block: Block }) {
     }
     case "text":
       return (
-        <div className={styles.assistantRow}>
+        <div className={styles.assistantRow} role="article" aria-label="pi">
           <div className={styles.assistantMark} aria-hidden="true">
             <PiLogo size={18} />
           </div>
@@ -224,7 +230,7 @@ function BlockView({ block }: { block: Block }) {
         </div>
       );
     case "image":
-      return <img src={block.url} alt="" className={styles.inlineImage} />;
+      return <img src={block.url} alt="Generated image" className={styles.inlineImage} />;
     case "tool":
       return <ToolView block={block} />;
   }

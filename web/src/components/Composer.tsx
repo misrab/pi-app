@@ -163,9 +163,15 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
     dragOver ? styles.dragOver : "",
   ].filter(Boolean).join(" ");
 
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submit();
+  };
+
   return (
-    <div
+    <form
       className={styles.composer}
+      onSubmit={onSubmit}
       onDragEnter={onDragEnter}
       onDragLeave={onDragLeave}
       onDragOver={onDragOver}
@@ -273,14 +279,14 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
               ? <button className={`${styles.actionBtn} ${styles.stopBtn}`} onClick={onAbort} aria-label="Stop">
                   <StopIcon />
                 </button>
-              : <button className={`${styles.actionBtn} ${styles.sendBtn}`} onClick={submit} disabled={!canSend} aria-label="Send">
+              : <button type="submit" className={`${styles.actionBtn} ${styles.sendBtn}`} disabled={!canSend} aria-label="Send">
                   <SendIcon />
                 </button>
             }
           </div>
         </div>
       </div>
-    </div>
+    </form>
   );
 }
 

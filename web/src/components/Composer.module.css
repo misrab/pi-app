@@ -84,14 +84,14 @@
 }
 
 .inputBox.focused {
-  border-color: rgba(45, 212, 191, 0.45);
-  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.08);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .inputBox.dragOver {
   border-color: var(--accent);
   border-style: dashed;
-  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.12);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 /* ── Drop overlay inside the box ─────────────────────────────────────────── */
@@ -176,8 +176,8 @@
 }
 
 .micActive {
-  color: #f87171;
-  background: rgba(248, 113, 113, 0.1);
+  color: var(--error);
+  background: color-mix(in srgb, var(--error) 10%, transparent);
   animation: micPulse 1.2s ease-in-out infinite;
 }
 @keyframes micPulse {
@@ -198,7 +198,7 @@
 
 .sendBtn {
   background: var(--accent);
-  color: #fff;
+  color: var(--bg);
 }
 .sendBtn:disabled {
   opacity: 0.3;

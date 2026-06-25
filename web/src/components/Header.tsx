@@ -32,11 +32,15 @@ export function Header({ status, sessionName }: Props) {
       </button>
 
       <div className={styles.center}>
-        <PiLogo size={20} />
-        <span className={styles.title}>{sessionName ?? "pi"}</span>
+        <PiLogo size={20} aria-hidden />
+        <h1 className={styles.title}>{sessionName ?? "pi"}</h1>
       </div>
 
-      <span className={`${styles.dot} ${styles[status]}`} title={status} />
+      <span
+        className={`${styles.dot} ${styles[status]}`}
+        role="status"
+        aria-label={`Connection ${status}`}
+      />
     </header>
   );
 }
