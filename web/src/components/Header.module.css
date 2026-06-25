@@ -2,11 +2,62 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: calc(10px + var(--safe-top)) 16px 10px;
+  padding: calc(10px + var(--safe-top)) 12px 10px;
   border-bottom: 1px solid var(--panel-2);
   background: var(--bg);
   position: relative;
   flex-shrink: 0;
+}
+
+@media (min-width: 900px) {
+  .header {
+    padding: calc(10px + var(--safe-top)) 20px 10px;
+  }
+}
+
+.menuBtn {
+  position: absolute;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: var(--muted);
+}
+.menuBtn:active {
+  background: var(--panel);
+}
+
+/* Theme toggle — sits on the left, mirroring the status dot on the right */
+.themeBtn {
+  position: absolute;
+  left: 12px;
+  color: var(--muted);
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+}
+
+.themeWithMenu {
+  left: 52px;
+}
+
+@media (min-width: 900px) {
+  .themeBtn {
+    left: 20px;
+  }
+
+  .themeWithMenu {
+    left: 20px;
+  }
+}
+.themeBtn:hover {
+  color: var(--text);
 }
 
 .center {
@@ -26,29 +77,19 @@
   line-height: 1.2;
 }
 
-/* Theme toggle — sits on the left, mirroring the status dot on the right */
-.themeBtn {
-  position: absolute;
-  left: 16px;
-  color: var(--muted);
-  padding: 4px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.15s;
-}
-.themeBtn:hover {
-  color: var(--text);
-}
-
 /* Connection status dot */
 .dot {
   position: absolute;
-  right: 16px;
+  right: 12px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
+}
+
+@media (min-width: 900px) {
+  .dot {
+    right: 20px;
+  }
 }
 
 .open {

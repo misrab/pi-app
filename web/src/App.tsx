@@ -35,6 +35,7 @@ export function App() {
           <Header
             status={session.status}
             sessionName={session.sessionName}
+            onOpenSession={!isDesktop ? () => setSheet("session") : undefined}
           />
 
           <Transcript
@@ -52,7 +53,6 @@ export function App() {
             askMode={session.askMode}
             planMode={session.planMode}
             persona={session.persona}
-            onOpenSession={() => setSheet("session")}
             onOpenModel={() => setSheet("model")}
             onOpenPersona={() => setSheet("persona")}
             onCycleThinking={session.cycleThinking}

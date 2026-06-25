@@ -6,9 +6,10 @@ import styles from "./Header.module.css";
 interface Props {
   status: ConnectionStatus;
   sessionName?: string;
+  onOpenSession?: () => void;
 }
 
-export function Header({ status, sessionName }: Props) {
+export function Header({ status, sessionName, onOpenSession }: Props) {
   const [theme, setTheme] = useState<"dark" | "light">(
     () => (document.documentElement.dataset.theme as "dark" | "light") ?? "dark",
   );
@@ -22,8 +23,14 @@ export function Header({ status, sessionName }: Props) {
 
   return (
     <header className={styles.header}>
+      {onOpenSession && (
+        <button className={styles.menuBtn} onClick={onOpenSession} aria-label="Sessions">
+          <MenuIcon />
+        </button>
+      )}
+
       <button
-        className={styles.themeBtn}
+        className={`${styles.themeBtn} ${onOpenSession ? styles.themeWithMenu : ""}`}
         onClick={toggleTheme}
         aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
         title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
@@ -65,6 +72,16 @@ function MoonIcon() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <line x1="3" y1="6"  x2="21" y2="6"  />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
     </svg>
   );
 }
