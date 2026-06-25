@@ -1,21 +1,54 @@
-:root {
-  /* Anthropic warm-dark palette */
-  --bg: #1a1917;
-  --panel: #252320;
-  --panel-2: #2e2b27;
-  --muted: #9a9891;
-  --text: #f0ede6;
-  --accent: #d97757;   /* Anthropic orange */
-  --tool: #6a9bcc;     /* Anthropic blue */
-  --think: #788c5d;    /* Anthropic green */
-  --error: #f87171;
-  --ok: #22c55e;
+/* ── Dark theme (default) ───────────────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  --bg:       #0d1b22;
+  --panel:    #152533;
+  --panel-2:  #1c3040;
+  --muted:    #6b9aaa;
+  --text:     #e2f0f5;
+  --accent:   #2dd4bf;   /* teal */
+  --tool:     #67e8f9;   /* cyan  */
+  --think:    #86efac;   /* mint  */
+  --error:    #f87171;
+  --ok:       #34d399;
 
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* user bubble */
+  --user-bg:    #122030;
+  --user-border: rgba(45, 212, 191, 0.15);
+
+  /* tool block */
+  --tool-bg:     #0f2030;
+  --tool-border: #1a3a4a;
+  --tool-args:   #6a8a9a;
+  --tool-result: #9ab8c5;
 
   color-scheme: dark;
-  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* ── Light theme ─────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg:       #f2f8fa;
+  --panel:    #ddeef4;
+  --panel-2:  #c8e3ec;
+  --muted:    #4f7d8c;
+  --text:     #0e2530;
+  --accent:   #0d9488;   /* teal-600 */
+  --tool:     #0891b2;   /* cyan-600 */
+  --think:    #16a34a;   /* green-600 */
+  --error:    #dc2626;
+  --ok:       #16a34a;
+
+  /* user bubble */
+  --user-bg:    #c5e8f0;
+  --user-border: rgba(13, 148, 136, 0.2);
+
+  /* tool block */
+  --tool-bg:     #d5eaf3;
+  --tool-border: #a8cfe0;
+  --tool-args:   #4a7080;
+  --tool-result: #2a5060;
+
+  color-scheme: light;
 }
 
 * {
@@ -52,4 +85,10 @@ button:disabled {
 
 textarea {
   font: inherit;
+}
+
+:root {
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  font-family: system-ui, -apple-system, sans-serif;
 }

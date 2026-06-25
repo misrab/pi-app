@@ -21,9 +21,26 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 70vw;
+  max-width: 60vw;
 }
 
+/* Theme toggle — sits on the left, mirroring the status dot on the right */
+.themeBtn {
+  position: absolute;
+  left: 16px;
+  color: var(--muted);
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+}
+.themeBtn:hover {
+  color: var(--text);
+}
+
+/* Connection status dot */
 .dot {
   position: absolute;
   right: 16px;
