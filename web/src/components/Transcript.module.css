@@ -26,16 +26,34 @@
 
 /* User messages are plain text — preserve whitespace here only. */
 .user {
-  background: #243049;
+  background: #302820;
   align-self: flex-end;
   border-bottom-right-radius: 4px;
   white-space: pre-wrap;
+  border: 1px solid rgba(217, 119, 87, 0.15);
 }
 
-.assistant {
-  background: var(--panel);
+/* Claude-style assistant: icon on the left, text to the right, no bubble. */
+.assistantRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   align-self: flex-start;
-  border-bottom-left-radius: 4px;
+  max-width: 92%;
+}
+
+.assistantMark {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.assistantBody {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.55;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  font-size: 0.94rem;
 }
 
 .thinking {
@@ -48,8 +66,8 @@
 }
 
 .tool {
-  background: #17132b;
-  border: 1px solid #2e2452;
+  background: #1e1c18;
+  border: 1px solid #35302a;
   align-self: stretch;
   max-width: 100%;
   font-family: ui-monospace, "SF Mono", monospace;
@@ -76,7 +94,7 @@
   white-space: pre-wrap;
   word-break: break-word;
   margin-top: 6px;
-  color: #8b94a6;
+  color: #8a8278;
 }
 
 .toolResult {
@@ -84,8 +102,8 @@
   word-break: break-word;
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid #2e2452;
-  color: #b9c2d0;
+  border-top: 1px solid #35302a;
+  color: #b0a99e;
   max-height: 260px;
   overflow-y: auto;
 }

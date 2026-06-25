@@ -2,20 +2,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: calc(8px + var(--safe-top)) 16px 8px;
+  padding: calc(10px + var(--safe-top)) 16px 10px;
   border-bottom: 1px solid var(--panel-2);
   background: var(--bg);
   position: relative;
 }
 
-.sessionName {
-  font-size: 0.9rem;
+.center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 80%;
+  max-width: 70vw;
 }
 
 .dot {

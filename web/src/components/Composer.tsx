@@ -44,7 +44,7 @@ export function Composer({ streaming, disabled, onSend, onAbort }: Props) {
   const submit = () => {
     if (speech.listening) speech.stop();
     const trimmed = text.trim();
-    if (!trimmed || streaming) return;
+    if (!trimmed) return;
     onSend(trimmed);
     setText("");
     dictateBase.current = "";
@@ -71,7 +71,7 @@ export function Composer({ streaming, disabled, onSend, onAbort }: Props) {
           }
         }}
       />
-      {!streaming && speech.supported && (
+      {speech.supported && (
         <button
           className={`${styles.btn} ${styles.mic} ${speech.listening ? styles.micOn : ""}`}
           onClick={toggleMic}
@@ -81,20 +81,19 @@ export function Composer({ streaming, disabled, onSend, onAbort }: Props) {
           <MicIcon />
         </button>
       )}
-      {streaming ? (
+      {streaming && (
         <button className={`${styles.btn} ${styles.abort}`} onClick={onAbort} aria-label="Stop">
-          ■
-        </button>
-      ) : (
-        <button
-          className={`${styles.btn} ${styles.send}`}
-          onClick={submit}
-          disabled={disabled || !text.trim()}
-          aria-label="Send"
-        >
-          ↑
+          <StopIcon />
         </button>
       )}
+      <button
+        className={`${styles.btn} ${streaming ? styles.sendQueued : styles.send}`}
+        onClick={submit}
+        disabled={disabled || !text.trim()}
+        aria-label={streaming ? "Queue message" : "Send"}
+      >
+        <SendIcon />
+      </button>
     </div>
   );
 }
@@ -105,6 +104,23 @@ function MicIcon() {
       <rect x="9" y="2" width="6" height="12" rx="3" />
       <path d="M5 11a7 7 0 0 0 14 0" />
       <line x1="12" y1="18" x2="12" y2="22" />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="12" y1="19" x2="12" y2="5" />
+      <polyline points="5 12 12 5 19 12" />
+    </svg>
+  );
+}
+
+function StopIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="4" y="4" width="16" height="16" rx="3" />
     </svg>
   );
 }

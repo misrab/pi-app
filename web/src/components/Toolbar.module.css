@@ -7,14 +7,6 @@
   background: var(--bg);
 }
 
-.sessions {
-  width: 40px;
-  height: 40px;
-  font-size: 1.2rem;
-  color: var(--text);
-  flex-shrink: 0;
-}
-
 .model {
   display: flex;
   align-items: center;
@@ -28,16 +20,17 @@
 }
 
 .modelName {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  text-align: left;
 }
 
-.caret {
+.model svg {
   color: var(--muted);
-  font-size: 0.7rem;
   flex-shrink: 0;
 }
 
@@ -48,7 +41,6 @@
   flex-shrink: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  /* hide scrollbar but keep scrollability */
   scrollbar-width: none;
 }
 .controls::-webkit-scrollbar {
@@ -57,33 +49,29 @@
 
 .pill {
   font-size: 0.72rem;
-  color: var(--accent);
-  background: #1a2138;
+  color: var(--muted);
+  background: var(--panel);
   padding: 6px 10px;
   border-radius: 8px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 600;
+  border: 1px solid var(--panel-2);
+  transition: color 0.15s, background 0.15s;
 }
 
 .pill:active {
-  background: #232c4a;
+  background: var(--panel-2);
 }
 
 .askActive {
   color: #f87171;
-  background: #2a1a1a;
-}
-
-.askActive:active {
-  background: #3a2020;
+  background: rgba(248, 113, 113, 0.1);
+  border-color: rgba(248, 113, 113, 0.25);
 }
 
 .planActive {
   color: #86efac;
-  background: #1a2a1a;
-}
-
-.planActive:active {
-  background: #243224;
+  background: rgba(134, 239, 172, 0.1);
+  border-color: rgba(134, 239, 172, 0.25);
 }
