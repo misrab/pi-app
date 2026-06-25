@@ -235,7 +235,12 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
           }}
           onPaste={onPaste}
-          onFocus={() => setFocused(true)}
+          onFocus={() => {
+            setFocused(true);
+            // iOS doesn't resize the layout for the keyboard, so nudge the
+            // input into view once the keyboard has animated in.
+            setTimeout(() => textareaRef.current?.scrollIntoView({ block: "nearest" }), 300);
+          }}
           onBlur={() => setFocused(false)}
         />
 

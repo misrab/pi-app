@@ -48,6 +48,12 @@ type Action =
 let uid = 0;
 const nextId = () => `b${++uid}`;
 
+function planModeFromName(name: string | undefined): PlanMode {
+  if (name?.endsWith("[impl]")) return "impl";
+  if (name?.endsWith("[plan]")) return "plan";
+  return "off";
+}
+
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "reset":
@@ -305,6 +311,10 @@ export function useSession() {
       setModel(res.data.model);
       setThinkingLevel(res.data.thinkingLevel);
       setSessionName(res.data.sessionName);
+      // The plan-mode extension reflects its phase in the session name suffix
+      // ([plan]/[impl]); derive from it so reattaching/reloading restores the
+      // toggle instead of silently resetting to off.
+      setPlanMode(planModeFromName(res.data.sessionName));
       setInitializing(false);
       if (res.data.isStreaming) dispatch({ type: "event", event: { type: "agent_start" } });
     }

@@ -1,5 +1,6 @@
 import type { Model, PlanMode, ThinkingLevel } from "../api/types";
 import { trimModelName } from "../lib/fmt";
+import { t } from "../lib/i18n";
 import { Skeleton } from "./Skeleton";
 import styles from "./Toolbar.module.css";
 
@@ -67,14 +68,14 @@ export function Toolbar({
           onClick={onToggleAskMode}
           title={askMode ? "Ask mode (read-only) — click to disable" : "Enable ask mode (read-only)"}
         >
-          {askMode ? "ask" : "write"}
+          {askMode ? t("askMode") : t("writeMode")}
         </button>
         <button
           className={`${styles.pill} ${planMode !== "off" ? styles.planActive : ""}`}
           onClick={onCyclePlanMode}
-          title={planMode === "off" ? "Enter plan mode" : planMode === "plan" ? "Planning — tap to implement" : "Implementing — tap to finish"}
+          title={planMode === "off" ? t("planEnter") : planMode === "plan" ? t("planToImplement") : t("planToFinish")}
         >
-          {planMode === "off" ? "plan" : planMode === "plan" ? "plan ✎" : "impl ⚡"}
+          {planMode === "off" ? t("planOff") : planMode === "plan" ? t("planPlanning") : t("planImplementing")}
         </button>
       </div>
     </div>

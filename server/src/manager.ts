@@ -15,6 +15,11 @@ export type Status = "running" | "idle";
 const RING_SIZE = 500; // events buffered per session for in-flight-turn replay
 const REAP_INTERVAL_MS = 60_000;
 
+// Default model for *new* sessions (resumed sessions keep their saved model).
+// "provider/id" — resolved against the live registry, so a typo or disabled
+// model just falls back to the SDK default instead of erroring.
+const DEFAULT_MODEL = process.env.PI_DEFAULT_MODEL?.trim() || "anthropic/claude-haiku-4-5";
+
 export interface ManagerOptions {
   cwd: string; // fixed working dir for the agent; also scopes session storage
   agentDir: string; // "" => pi default (~/.pi/agent). Set via PI_CODING_AGENT_DIR.
@@ -186,6 +191,7 @@ export class Manager {
     // location is fixed by PI_CODING_AGENT_DIR + cwd, so sessionDir is omitted.
     const list = await SessionManager.list(cwd);
     const match = list.find((s: any) => s.id === id);
+    const isNew = !match;
     const sessionManager = match
       ? SessionManager.open(match.path)
       : SessionManager.create(cwd, undefined, { id });
@@ -204,6 +210,7 @@ export class Manager {
     });
 
     await bindExtensions(session);
+    if (isNew) await applyDefaultModel(session);
 
     const ms = new ManagedSession(id, session);
     this.sessions.set(id, ms);
@@ -228,6 +235,21 @@ export class Manager {
 // where the browser ignored extension UI requests.
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+// Set a new session's model to DEFAULT_MODEL if that model is available.
+async function applyDefaultModel(session: any): Promise<void> {
+  const slash = DEFAULT_MODEL.indexOf("/");
+  if (slash < 0) return;
+  const provider = DEFAULT_MODEL.slice(0, slash);
+  const modelId = DEFAULT_MODEL.slice(slash + 1);
+  try {
+    const models = await session.modelRegistry.getAvailable();
+    const model = models.find((m: any) => m.provider === provider && m.id === modelId);
+    if (model) await session.setModel(model);
+  } catch {
+    /* leave the SDK default in place */
+  }
 }
 
 async function bindExtensions(session: any): Promise<void> {

@@ -9,6 +9,14 @@ const strings = {
   activityReady: "Ready",
   queuedBadge: "queued",
   personaTitle: "Persona",
+  askMode: "ask",
+  writeMode: "write",
+  planOff: "plan",
+  planPlanning: "planning",
+  planImplementing: "implementing",
+  planEnter: "Enter plan mode",
+  planToImplement: "Planning — tap to implement",
+  planToFinish: "Implementing — tap to finish",
 } as const;
 
 type StringKey = keyof typeof strings;
