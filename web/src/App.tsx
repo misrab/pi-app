@@ -22,6 +22,7 @@ export function App() {
       <Header
         status={session.status}
         sessionName={session.sessionName}
+        onOpenSession={() => setSheet("session")}
       />
 
       <Transcript
@@ -36,7 +37,6 @@ export function App() {
         thinkingLevel={session.thinkingLevel}
         askMode={session.askMode}
         planMode={session.planMode}
-        onOpenSession={() => setSheet("session")}
         onOpenModel={() => setSheet("model")}
         onCycleThinking={session.cycleThinking}
         onToggleAskMode={session.toggleAskMode}

@@ -8,7 +8,6 @@ interface Props {
   thinkingLevel: ThinkingLevel;
   askMode: boolean;
   planMode: PlanMode;
-  onOpenSession: () => void;
   onOpenModel: () => void;
   onCycleThinking: () => void;
   onToggleAskMode: () => void;
@@ -21,7 +20,6 @@ export function Toolbar({
   thinkingLevel,
   askMode,
   planMode,
-  onOpenSession,
   onOpenModel,
   onCycleThinking,
   onToggleAskMode,
@@ -29,15 +27,13 @@ export function Toolbar({
 }: Props) {
   return (
     <div className={styles.toolbar}>
-      <button className={styles.sessions} onClick={onOpenSession} aria-label="Sessions">
-        ☰
-      </button>
-
       <button className={styles.model} onClick={onOpenModel} disabled={initializing}>
         {initializing
           ? <Skeleton width="100px" height="1em" />
-          : <><span className={styles.modelName}>{model?.name?.replace(/\s*[·•]\s*$/, "") ?? "no model"}</span>
-             <span className={styles.caret}>▾</span></>
+          : <>
+              <span className={styles.modelName}>{model?.name?.replace(/\s*[·•]\s*$/, "") ?? "no model"}</span>
+              <ChevronDown />
+            </>
         }
       </button>
 
@@ -63,5 +59,13 @@ export function Toolbar({
         </button>
       </div>
     </div>
+  );
+}
+
+function ChevronDown() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
   );
 }

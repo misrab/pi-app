@@ -13,55 +13,71 @@
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--panel-2);
-  border-radius: 12px;
-  padding: 11px 14px;
+  border-radius: 22px;
+  padding: 12px 16px;
   /* 16px prevents iOS focus zoom */
   font-size: 16px;
   line-height: 1.4;
-  min-height: 44px;
+  min-height: 46px;
   max-height: 160px;
+  transition: border-color 0.15s;
+}
+
+.input::placeholder {
+  color: var(--muted);
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: rgba(217, 119, 87, 0.5);
 }
 
 .btn {
   flex-shrink: 0;
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 50%;
   font-size: 1.2rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.btn:active {
+  transform: scale(0.93);
 }
 
 .send {
   background: var(--accent);
-  color: #0f1117;
+  color: #fff;
+}
+
+.send:disabled {
+  opacity: 0.35;
 }
 
 .abort {
-  background: var(--error);
-  color: #0f1117;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid rgba(248, 113, 113, 0.4);
 }
 
 .mic {
   background: var(--panel);
-  color: var(--text);
+  color: var(--muted);
   border: 1px solid var(--panel-2);
 }
+
 .mic:active {
   background: var(--panel-2);
 }
 
 .micOn {
-  background: var(--error);
-  color: #0f1117;
-  border-color: var(--error);
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.4);
   animation: micPulse 1.2s ease-in-out infinite;
 }
 

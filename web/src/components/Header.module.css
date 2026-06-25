@@ -1,29 +1,48 @@
 .header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: calc(8px + var(--safe-top)) 16px 8px;
+  justify-content: space-between;
+  padding: calc(10px + var(--safe-top)) 14px 10px;
   border-bottom: 1px solid var(--panel-2);
   background: var(--bg);
-  position: relative;
 }
 
-.sessionName {
-  font-size: 0.9rem;
+.menuBtn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.menuBtn:active {
+  background: var(--panel);
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.title {
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 80%;
 }
 
 .dot {
-  position: absolute;
-  right: 16px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .open {

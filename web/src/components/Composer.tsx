@@ -83,7 +83,7 @@ export function Composer({ streaming, disabled, onSend, onAbort }: Props) {
       )}
       {streaming ? (
         <button className={`${styles.btn} ${styles.abort}`} onClick={onAbort} aria-label="Stop">
-          ■
+          <StopIcon />
         </button>
       ) : (
         <button
@@ -92,7 +92,7 @@ export function Composer({ streaming, disabled, onSend, onAbort }: Props) {
           disabled={disabled || !text.trim()}
           aria-label="Send"
         >
-          ↑
+          <SendIcon />
         </button>
       )}
     </div>
@@ -105,6 +105,23 @@ function MicIcon() {
       <rect x="9" y="2" width="6" height="12" rx="3" />
       <path d="M5 11a7 7 0 0 0 14 0" />
       <line x1="12" y1="18" x2="12" y2="22" />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="12" y1="19" x2="12" y2="5" />
+      <polyline points="5 12 12 5 19 12" />
+    </svg>
+  );
+}
+
+function StopIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="4" y="4" width="16" height="16" rx="3" />
     </svg>
   );
 }

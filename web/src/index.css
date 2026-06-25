@@ -1,12 +1,13 @@
 :root {
-  --bg: #0f1117;
-  --panel: #1e2130;
-  --panel-2: #262a3a;
-  --muted: #64748b;
-  --text: #e2e8f0;
-  --accent: #7c9cff;
-  --tool: #a78bfa;
-  --think: #5b647a;
+  /* Anthropic warm-dark palette */
+  --bg: #1a1917;
+  --panel: #252320;
+  --panel-2: #2e2b27;
+  --muted: #9a9891;
+  --text: #f0ede6;
+  --accent: #d97757;   /* Anthropic orange */
+  --tool: #6a9bcc;     /* Anthropic blue */
+  --think: #788c5d;    /* Anthropic green */
   --error: #f87171;
   --ok: #22c55e;
 
