@@ -44,7 +44,7 @@ export function Composer({ streaming, disabled, onSend, onAbort }: Props) {
   const submit = () => {
     if (speech.listening) speech.stop();
     const trimmed = text.trim();
-    if (!trimmed || streaming) return;
+    if (!trimmed) return;
     onSend(trimmed);
     setText("");
     dictateBase.current = "";
@@ -71,7 +71,7 @@ export function Composer({ streaming, disabled, onSend, onAbort }: Props) {
           }
         }}
       />
-      {!streaming && speech.supported && (
+      {speech.supported && (
         <button
           className={`${styles.btn} ${styles.mic} ${speech.listening ? styles.micOn : ""}`}
           onClick={toggleMic}
@@ -81,20 +81,19 @@ export function Composer({ streaming, disabled, onSend, onAbort }: Props) {
           <MicIcon />
         </button>
       )}
-      {streaming ? (
+      {streaming && (
         <button className={`${styles.btn} ${styles.abort}`} onClick={onAbort} aria-label="Stop">
           <StopIcon />
         </button>
-      ) : (
-        <button
-          className={`${styles.btn} ${styles.send}`}
-          onClick={submit}
-          disabled={disabled || !text.trim()}
-          aria-label="Send"
-        >
-          <SendIcon />
-        </button>
       )}
+      <button
+        className={`${styles.btn} ${streaming ? styles.sendQueued : styles.send}`}
+        onClick={submit}
+        disabled={disabled || !text.trim()}
+        aria-label={streaming ? "Queue message" : "Send"}
+      >
+        <SendIcon />
+      </button>
     </div>
   );
 }

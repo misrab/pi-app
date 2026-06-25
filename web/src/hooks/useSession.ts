@@ -224,6 +224,9 @@ export function useSession() {
       if (event.type === "agent_end") {
         void refreshStats();
         void loadMessages(); // reconcile to authoritative committed state
+        // Flush one queued message if present.
+        const next = promptQueue.current.shift();
+        if (next) sendPromptNow(next);
       }
     });
     const offStatus = client.onStatus((s) => {
@@ -253,6 +256,8 @@ export function useSession() {
       if (event.type === "agent_end") {
         void refreshStats();
         void loadMessages();
+        const next = promptQueue.current.shift();
+        if (next) sendPromptNow(next);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -277,17 +282,30 @@ export function useSession() {
     if (res.success && res.data) setStats(res.data);
   }, [client]);
 
-  const sendPrompt = useCallback(
+  const sendPromptNow = useCallback(
     (text: string) => {
       dispatch({ type: "user", text });
       if (planMode === "plan") {
-        // Delegate to plan-mode extension: it will send the message internally.
         client.send({ type: "run_command", name: "plan", args: text });
       } else {
         client.send({ type: "prompt", message: text });
       }
     },
     [client, planMode],
+  );
+
+  const sendPrompt = useCallback(
+    (text: string) => {
+      if (state.streaming) {
+        // Queue the message — it will be sent when the current turn ends.
+        promptQueue.current.push(text);
+        // Show it in the transcript immediately so the user sees it was accepted.
+        dispatch({ type: "user", text });
+      } else {
+        sendPromptNow(text);
+      }
+    },
+    [state.streaming, sendPromptNow],
   );
 
   const cyclePlanMode = useCallback(async () => {
@@ -307,7 +325,15 @@ export function useSession() {
     }
   }, [client, planMode]);
 
-  const abort = useCallback(() => client.send({ type: "abort" }), [client]);
+  // Queue of messages submitted while the agent is streaming.
+  const promptQueue = useRef<string[]>([]);
+
+  const abort = useCallback(() => {
+    client.send({ type: "abort" });
+    // Optimistically clear streaming — agent_end may not fire if the SDK swallows it.
+    dispatch({ type: "event", event: { type: "agent_end" } as Event });
+    promptQueue.current = []; // discard any queued messages on abort
+  }, [client]);
 
   // Start a fresh session by re-attaching the socket with no session id; the
   // backend spawns a new pi process (unify-on-attach). The open handler then

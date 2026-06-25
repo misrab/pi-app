@@ -58,6 +58,17 @@
   opacity: 0.35;
 }
 
+/* While streaming: send queues the message, shown as muted */
+.sendQueued {
+  background: var(--panel-2);
+  color: var(--muted);
+  border: 1px solid var(--panel-2);
+}
+
+.sendQueued:disabled {
+  opacity: 0.3;
+}
+
 .abort {
   background: var(--panel-2);
   color: var(--text);

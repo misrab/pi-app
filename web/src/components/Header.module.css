@@ -1,34 +1,17 @@
 .header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: calc(10px + var(--safe-top)) 14px 10px;
+  justify-content: center;
+  padding: calc(10px + var(--safe-top)) 16px 10px;
   border-bottom: 1px solid var(--panel-2);
   background: var(--bg);
-}
-
-.menuBtn {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text);
-  border-radius: 10px;
-  flex-shrink: 0;
-}
-.menuBtn:active {
-  background: var(--panel);
+  position: relative;
 }
 
 .center {
   display: flex;
   align-items: center;
   gap: 8px;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  pointer-events: none;
 }
 
 .title {
@@ -36,13 +19,17 @@
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70vw;
 }
 
 .dot {
+  position: absolute;
+  right: 16px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  flex-shrink: 0;
 }
 
 .open {
