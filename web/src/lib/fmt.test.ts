@@ -19,4 +19,6 @@ describe("fmtPercent", () => {
 
 describe("trimModelName", () => {
   it("strips trailing separators", () => expect(trimModelName("Claude ·")).toBe("Claude"));
+  it("drops a trailing (latest) tag", () =>
+    expect(trimModelName("Claude Haiku 4.5 (latest)")).toBe("Claude Haiku 4.5"));
 });

@@ -53,6 +53,9 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  /* fade the right edge so it reads as "scroll for more" when pills overflow */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
 }
 .controls::-webkit-scrollbar {
   display: none;
@@ -65,8 +68,10 @@
     padding: 6px 10px;
   }
 
+  /* cap the model so a long name can't push the controls off-screen */
   .model {
     flex: 0 1 auto;
+    max-width: 45%;
     padding: 5px 10px;
   }
 
@@ -93,6 +98,8 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
   border: 1px solid var(--panel-2);
   transition: color 0.15s, background 0.15s;
 }

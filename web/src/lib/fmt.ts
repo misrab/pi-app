@@ -43,7 +43,10 @@ export function fmtPercent(p: number): string {
   return `${p.toFixed(2)}%`;
 }
 
-/** Strip trailing separator glyphs from model display names. */
+/** Tidy a model display name: drop a trailing "(latest)" tag and separators. */
 export function trimModelName(name?: string): string {
-  return name?.replace(/\s*[·•]\s*$/, "") ?? "";
+  return name
+    ?.replace(/\s*\(latest\)\s*$/i, "")
+    .replace(/\s*[·•]\s*$/, "")
+    .trim() ?? "";
 }
