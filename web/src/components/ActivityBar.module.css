@@ -9,6 +9,12 @@
   background: var(--panel);
 }
 
+@media (min-width: 900px) {
+  .bar {
+    padding: 0.5rem 1rem;
+  }
+}
+
 .bar.active {
   color: var(--accent);
 }

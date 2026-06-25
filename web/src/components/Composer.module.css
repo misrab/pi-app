@@ -3,6 +3,12 @@
   background: var(--bg);
 }
 
+@media (min-width: 900px) {
+  .composer {
+    padding: 8px 20px calc(10px + var(--safe-bottom));
+  }
+}
+
 /* ── Attachment chips ────────────────────────────────────────────────────── */
 .attachBar {
   display: flex;

@@ -10,6 +10,12 @@
   -webkit-overflow-scrolling: touch;
 }
 
+@media (min-width: 900px) {
+  .transcript {
+    padding: 20px;
+  }
+}
+
 .empty {
   margin: auto;
   color: var(--muted);

@@ -1,0 +1,11 @@
+---
+description: Keep responses succinct
+alwaysApply: true
+---
+
+# Be Succinct
+
+- Answer in under 500 words whenever possible.
+- Lead with the answer; cut preamble, filler, and restating the question.
+- Prefer short sentences, lists, and code over long prose.
+- Only add detail the user explicitly asks for.
