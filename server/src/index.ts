@@ -120,6 +120,12 @@ async function serveStatic(pathname: string, res: ServerResponse): Promise<void>
 
 const wss = new WebSocketServer({ server, path: "/ws" });
 
+// How often to send a WebSocket protocol-level ping to each client.
+// The browser responds automatically with a pong. If no pong arrives within
+// this interval the connection is considered dead and terminated, which fires
+// onclose on the client and triggers its reconnect logic.
+const WS_PING_INTERVAL_MS = 30_000;
+
 wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
   const url = new URL(req.url ?? "/", "http://localhost");
   const id = url.searchParams.get("session");
@@ -134,6 +140,23 @@ wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
   const sendRaw = (line: string) => {
     if (ws.readyState === ws.OPEN) ws.send(line);
   };
+
+  // ── Keepalive ping/pong ──────────────────────────────────────────────────
+  // Send a WebSocket protocol-level ping every 30s. The browser responds with
+  // a pong automatically (no app code needed). If no pong arrives before the
+  // next ping we know the connection is silently dead (common when a mobile
+  // browser backgrounds the PWA and freezes JS) and we terminate it so the
+  // server cleans up the attachment and the client reconnects on foreground.
+  let isAlive = true;
+  ws.on("pong", () => { isAlive = true; });
+  const pingTimer = setInterval(() => {
+    if (!isAlive) {
+      ws.terminate(); // triggers onclose on both sides
+      return;
+    }
+    isAlive = false;
+    if (ws.readyState === ws.OPEN) ws.ping();
+  }, WS_PING_INTERVAL_MS);
 
   // Listeners are attached synchronously; commands that arrive before the
   // session is ready (attach is async) are queued, then flushed in order.
@@ -161,6 +184,7 @@ wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     else queue.push(raw);
   });
   ws.on("close", () => {
+    clearInterval(pingTimer);
     unsubscribe();
     manager.detach(id);
   });

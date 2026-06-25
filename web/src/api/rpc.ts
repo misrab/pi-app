@@ -5,17 +5,22 @@ type StatusHandler = (status: ConnectionStatus) => void;
 
 export type ConnectionStatus = "connecting" | "open" | "closed";
 
-/**
- * RpcClient manages the WebSocket to the pi-app backend and speaks pi's JSON
- * protocol. Commands can be fire-and-forget or awaited via request() using the
- * protocol's `id` correlation. Events are pushed to subscribers.
- */
-// Per-tab session id. The client owns a stable id so a reconnect/reload
-// re-attaches to the same server-side session instead of spawning a new one.
+// Per-tab session id — persisted in sessionStorage so a page reload or
+// reconnect re-attaches to the same server-side session.
 const SESSION_KEY = "pi-app:session-id";
 const RECONNECT_MIN_MS = 1500;
 const RECONNECT_MAX_MS = 30000;
 
+/**
+ * RpcClient manages the WebSocket to the pi-app backend.
+ *
+ * Reconnection strategy:
+ *  - Exponential backoff (1.5s → 30s) on unexpected close.
+ *  - Immediate reconnect (backoff reset) on visibilitychange → visible and on
+ *    the network "online" event. This is the key fix for mobile: when the OS
+ *    backgrounds the PWA, JS freezes and onclose may never fire; when the user
+ *    returns to the app visibilitychange fires immediately and we reconnect.
+ */
 export class RpcClient {
   private ws: WebSocket | null = null;
   private base: string;
@@ -42,6 +47,11 @@ export class RpcClient {
 
   connect() {
     this.shouldReconnect = true;
+    // Reconnect immediately when the page becomes visible again (foreground)
+    // or the network comes back. Both are critical on mobile where JS freezes
+    // during backgrounding and onclose may never fire.
+    document.addEventListener("visibilitychange", this.onVisibilityChange);
+    window.addEventListener("online", this.onOnline);
     this.open();
   }
 
@@ -63,35 +73,14 @@ export class RpcClient {
     this.open();
   }
 
-  private wsUrl(): string {
-    return `${this.base}?session=${encodeURIComponent(this.sessionId)}`;
-  }
-
-  private open() {
-    this.setStatus("connecting");
-    const ws = new WebSocket(this.wsUrl());
-    this.ws = ws;
-
-    ws.onopen = () => {
-      this.reconnectAttempts = 0;
-      this.setStatus("open");
-    };
-    ws.onclose = () => {
-      this.setStatus("closed");
-      this.rejectAllPending();
-      if (this.shouldReconnect) {
-        // Exponential backoff so a persistent failure doesn't hammer the server.
-        const delay = Math.min(RECONNECT_MIN_MS * 2 ** this.reconnectAttempts++, RECONNECT_MAX_MS);
-        this.reconnectTimer = window.setTimeout(() => this.open(), delay);
-      }
-    };
-    ws.onerror = () => ws.close();
-    ws.onmessage = (e) => this.onMessage(e.data);
-  }
-
   close() {
     this.shouldReconnect = false;
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    document.removeEventListener("visibilitychange", this.onVisibilityChange);
+    window.removeEventListener("online", this.onOnline);
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.ws?.close();
   }
 
@@ -127,6 +116,59 @@ export class RpcClient {
     return () => this.statusHandlers.delete(handler);
   }
 
+  // ── Visibility / network ─────────────────────────────────────────────────
+
+  private onVisibilityChange = () => {
+    if (document.visibilityState === "visible") this.checkAndReconnect();
+  };
+
+  private onOnline = () => {
+    this.checkAndReconnect();
+  };
+
+  /**
+   * If the socket is not open, cancel any pending backoff timer and reconnect
+   * immediately. Called on foreground and network-restore events so the user
+   * never waits up to 30s for the backoff to fire.
+   */
+  private checkAndReconnect() {
+    if (!this.shouldReconnect) return;
+    if (this.ws?.readyState === WebSocket.OPEN) return;
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.reconnectAttempts = 0;
+    this.open();
+  }
+
+  // ── Internal ─────────────────────────────────────────────────────────────
+
+  private wsUrl(): string {
+    return `${this.base}?session=${encodeURIComponent(this.sessionId)}`;
+  }
+
+  private open() {
+    this.setStatus("connecting");
+    const ws = new WebSocket(this.wsUrl());
+    this.ws = ws;
+
+    ws.onopen = () => {
+      this.reconnectAttempts = 0;
+      this.setStatus("open");
+    };
+    ws.onclose = () => {
+      this.setStatus("closed");
+      this.rejectAllPending();
+      if (this.shouldReconnect) {
+        const delay = Math.min(RECONNECT_MIN_MS * 2 ** this.reconnectAttempts++, RECONNECT_MAX_MS);
+        this.reconnectTimer = window.setTimeout(() => this.open(), delay);
+      }
+    };
+    ws.onerror = () => ws.close();
+    ws.onmessage = (e) => this.onMessage(e.data);
+  }
+
   private onMessage(raw: string) {
     let msg: Incoming;
     try {
@@ -151,8 +193,6 @@ export class RpcClient {
   }
 
   private rejectAllPending() {
-    // Resolve every pending request immediately with a failure response so their
-    // per-request timeouts get cleared and callers can react without waiting 15s.
     for (const resolve of this.pending.values()) {
       resolve({ type: "response", command: "_disconnect", success: false, error: "disconnected" } as Response);
     }
@@ -160,7 +200,6 @@ export class RpcClient {
   }
 }
 
-/** Generate a stable session id (browser secure context provides randomUUID). */
 function newId(): string {
   return crypto.randomUUID();
 }
