@@ -5,6 +5,7 @@
   padding: 8px 12px;
   border-top: 1px solid var(--panel-2);
   background: var(--bg);
+  overflow: hidden;
 }
 
 .sessions {
@@ -48,13 +49,33 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-shrink: 0;
+  min-width: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 .controls::-webkit-scrollbar {
   display: none;
+}
+
+/* ── Mobile: wrap into two rows ──────────────────────────────────────────── */
+@media (max-width: 899px) {
+  .toolbar {
+    flex-wrap: wrap;
+    row-gap: 4px;
+    padding-bottom: 10px;
+  }
+
+  /* sessions icon + model picker share the first row */
+  .model {
+    flex: 1;
+  }
+
+  /* pills fill the full second row and scroll if still needed */
+  .controls {
+    flex: 0 0 100%;
+    padding-left: 4px;
+  }
 }
 
 .pill {
