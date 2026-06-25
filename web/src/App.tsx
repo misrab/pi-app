@@ -17,7 +17,7 @@ export function App() {
 
   return (
     <div className={styles.app}>
-      <PwaInstall appName="pi" accentColor="#7c9cff" />
+      <PwaInstall appName="pi" accentColor="#2dd4bf" />
 
       <Header
         status={session.status}

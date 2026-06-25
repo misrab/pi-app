@@ -1,4 +1,6 @@
+import { useState, useCallback } from "react";
 import type { ConnectionStatus } from "../api/rpc";
+import { PiLogo } from "./PiLogo";
 import styles from "./Header.module.css";
 
 interface Props {
@@ -7,30 +9,58 @@ interface Props {
 }
 
 export function Header({ status, sessionName }: Props) {
+  const [theme, setTheme] = useState<"dark" | "light">(
+    () => (document.documentElement.dataset.theme as "dark" | "light") ?? "dark",
+  );
+
+  const toggleTheme = useCallback(() => {
+    const next = theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("theme", next);
+    setTheme(next);
+  }, [theme]);
+
   return (
     <header className={styles.header}>
+      <button
+        className={styles.themeBtn}
+        onClick={toggleTheme}
+        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+      >
+        {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+      </button>
+
       <div className={styles.center}>
-        <PiMark />
+        <PiLogo size={20} />
         <span className={styles.title}>{sessionName ?? "pi"}</span>
       </div>
+
       <span className={`${styles.dot} ${styles[status]}`} title={status} />
     </header>
   );
 }
 
-/** Anthropic-style asterisk mark in orange. */
-function PiMark() {
+function SunIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="4" fill="#d97757" />
-      <line x1="12" y1="2"  x2="12" y2="8"   stroke="#d97757" strokeWidth="2.5" strokeLinecap="round" />
-      <line x1="12" y1="16" x2="12" y2="22"  stroke="#d97757" strokeWidth="2.5" strokeLinecap="round" />
-      <line x1="2"  y1="12" x2="8"  y2="12"  stroke="#d97757" strokeWidth="2.5" strokeLinecap="round" />
-      <line x1="16" y1="12" x2="22" y2="12"  stroke="#d97757" strokeWidth="2.5" strokeLinecap="round" />
-      <line x1="5.1"  y1="5.1"  x2="9.2"  y2="9.2"  stroke="#d97757" strokeWidth="2" strokeLinecap="round" />
-      <line x1="14.8" y1="14.8" x2="18.9" y2="18.9" stroke="#d97757" strokeWidth="2" strokeLinecap="round" />
-      <line x1="18.9" y1="5.1"  x2="14.8" y2="9.2"  stroke="#d97757" strokeWidth="2" strokeLinecap="round" />
-      <line x1="9.2"  y1="14.8" x2="5.1"  y2="18.9" stroke="#d97757" strokeWidth="2" strokeLinecap="round" />
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" />
+      <line x1="12" y1="2"  x2="12" y2="5"  />
+      <line x1="12" y1="19" x2="12" y2="22" />
+      <line x1="2"  y1="12" x2="5"  y2="12" />
+      <line x1="19" y1="12" x2="22" y2="12" />
+      <line x1="4.9"  y1="4.9"  x2="7"    y2="7"    />
+      <line x1="17"   y1="17"   x2="19.1" y2="19.1" />
+      <line x1="19.1" y1="4.9"  x2="17"   y2="7"    />
+      <line x1="7"    y1="17"   x2="4.9"  y2="19.1" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
     </svg>
   );
 }
