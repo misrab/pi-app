@@ -83,13 +83,31 @@
   font-size: 0.94rem;
 }
 
-.thinking {
-  background: transparent;
-  border: 1px dashed var(--panel-2);
-  color: var(--think);
-  font-style: italic;
-  font-size: 0.85rem;
+.thinkingWrap {
   align-self: flex-start;
+  max-width: 92%;
+  padding: 8px 12px;
+  border: 1px dashed var(--panel-2);
+  border-radius: 12px;
+  color: var(--think);
+  font-size: 0.82rem;
+}
+
+.thinkingActive .thinkingLabel {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.thinkingLabel {
+  font-weight: 600;
+  font-style: normal;
+  letter-spacing: 0.02em;
+}
+
+.thinkingBody {
+  margin-top: 6px;
+  font-style: italic;
+  opacity: 0.9;
+  line-height: 1.5;
 }
 
 .tool {

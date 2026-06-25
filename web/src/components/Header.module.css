@@ -77,17 +77,31 @@
   line-height: 1.2;
 }
 
-/* Connection status dot */
-.dot {
+/* Connection status — dot + optional label */
+.status {
   position: absolute;
   right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--warning);
+  white-space: nowrap;
+}
+
+.dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 @media (min-width: 900px) {
-  .dot {
+  .status {
     right: 20px;
   }
 }

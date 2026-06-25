@@ -44,7 +44,7 @@ export function App() {
             initializing={session.initializing}
           />
 
-          <ActivityBar activity={session.activity} queuedCount={session.queuedCount} />
+          <ActivityBar queuedCount={session.queuedCount} />
 
           <Toolbar
             initializing={session.initializing}

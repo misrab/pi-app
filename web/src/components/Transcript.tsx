@@ -179,10 +179,13 @@ export function Transcript({ blocks, streaming, initializing }: Props) {
         </>
       )}
       {!initializing && blocks.length === 0 && <div className={styles.empty}>Start a conversation with pi.</div>}
-      {blocks.map((b) => (
-        <BlockView key={b.id} block={b} />
+      {blocks.map((b, i) => (
+        <BlockView key={b.id} block={b} active={streaming && i === blocks.length - 1} />
       ))}
-      {streaming && blocks[blocks.length - 1]?.kind !== "text" && (
+      {streaming && (() => {
+        const last = blocks[blocks.length - 1]?.kind;
+        return last !== "text" && last !== "thinking";
+      })() && (
         <div className={styles.spinner}>…</div>
       )}
       <div ref={endRef} />
@@ -190,7 +193,7 @@ export function Transcript({ blocks, streaming, initializing }: Props) {
   );
 }
 
-function BlockView({ block }: { block: Block }) {
+function BlockView({ block, active }: { block: Block; active?: boolean }) {
   switch (block.kind) {
     case "user": {
       const cls = [styles.bubble, styles.user, block.queued ? styles.userQueued : ""].filter(Boolean).join(" ");
@@ -225,8 +228,13 @@ function BlockView({ block }: { block: Block }) {
       );
     case "thinking":
       return (
-        <div className={`${styles.bubble} ${styles.thinking}`}>
-          <Markdown text={block.text} />
+        <div className={`${styles.thinkingWrap} ${active ? styles.thinkingActive : ""}`} role="status">
+          <span className={styles.thinkingLabel}>{t("activityThinking")}</span>
+          {block.text && (
+            <div className={styles.thinkingBody}>
+              <Markdown text={block.text} />
+            </div>
+          )}
         </div>
       );
     case "image":

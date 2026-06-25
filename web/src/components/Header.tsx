@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import type { ConnectionStatus } from "../api/rpc";
+import { t } from "../lib/i18n";
 import { PiLogo } from "./PiLogo";
 import styles from "./Header.module.css";
 
@@ -43,11 +44,17 @@ export function Header({ status, sessionName, onOpenSession }: Props) {
         <h1 className={styles.title}>{sessionName ?? "pi"}</h1>
       </div>
 
-      <span
-        className={`${styles.dot} ${styles[status]}`}
-        role="status"
-        aria-label={`Connection ${status}`}
-      />
+      <div className={styles.status} role="status">
+        {status !== "open" && (
+          <span className={styles.statusLabel}>
+            {status === "connecting" ? t("activityConnecting") : t("activityReconnecting")}
+          </span>
+        )}
+        <span
+          className={`${styles.dot} ${styles[status]}`}
+          aria-label={`Connection ${status}`}
+        />
+      </div>
     </header>
   );
 }
