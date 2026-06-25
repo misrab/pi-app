@@ -60,9 +60,13 @@ export function Toolbar({
         >
           {persona} ▾
         </button>
-        {model?.reasoning && thinkingLevel !== "off" && (
-          <button className={styles.pill} onClick={onCycleThinking} title="Cycle thinking level">
-            {thinkingLevel}
+        {model?.reasoning && (
+          <button
+            className={`${styles.pill} ${thinkingLevel === "off" ? styles.pillOff : styles.thinkActive}`}
+            onClick={onCycleThinking}
+            title={t("thinkingCycle")}
+          >
+            {thinkingLevel === "off" ? t("thinkingOff") : thinkingLevel}
           </button>
         )}
         <button

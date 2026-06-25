@@ -17,6 +17,8 @@ const strings = {
   planEnter: "Enter plan mode",
   planToImplement: "Planning — tap to implement",
   planToFinish: "Implementing — tap to finish",
+  thinkingOff: "think",
+  thinkingCycle: "Cycle thinking level",
 } as const;
 
 type StringKey = keyof typeof strings;
