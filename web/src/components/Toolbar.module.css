@@ -7,6 +7,16 @@
   background: var(--bg);
 }
 
+.sessions {
+  flex-shrink: 0;
+}
+
+@media (min-width: 900px) {
+  .sessions {
+    display: none;
+  }
+}
+
 .model {
   display: flex;
   align-items: center;

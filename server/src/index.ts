@@ -10,6 +10,7 @@ import { resolveConfig, installPackages, startConfigPoll } from "./config.js";
 import { Manager } from "./manager.js";
 import { handleCommand } from "./rpc.js";
 import { listSessions } from "./sessions.js";
+import { msg } from "./util.js";
 
 const env = (k: string, d = "") => (process.env[k]?.trim() ? process.env[k]!.trim() : d);
 const num = (k: string, d: number) => {
@@ -146,12 +147,8 @@ wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     if (ws.readyState === ws.OPEN) ws.send(line);
   };
 
-  // ── Keepalive ping/pong ──────────────────────────────────────────────────
-  // Send a WebSocket protocol-level ping every 30s. The browser responds with
-  // a pong automatically (no app code needed). If no pong arrives before the
-  // next ping we know the connection is silently dead (common when a mobile
-  // browser backgrounds the PWA and freezes JS) and we terminate it so the
-  // server cleans up the attachment and the client reconnects on foreground.
+  // Keepalive: protocol-level ping every 30s; terminate if no pong (common when
+  // a backgrounded PWA freezes JS). Browser responds with pong automatically.
   let isAlive = true;
   ws.on("pong", () => { isAlive = true; });
   const pingTimer = setInterval(() => {
@@ -210,12 +207,6 @@ wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
       ws.close(1011, "attach failed");
     });
 });
-
-function msg(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
-
-// --- lifecycle --------------------------------------------------------------
 
 server.listen(PORT, () => {
   console.log(`pi-app listening on :${PORT} (cwd ${CWD}, agentDir ${agentDir || "default"})`);

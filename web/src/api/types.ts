@@ -30,7 +30,6 @@ export interface ToolCallContent {
   name: string;
   arguments: unknown;
 }
-export type AssistantContent = TextContent | ThinkingContent | ToolCallContent;
 
 // ---- Commands (client -> pi) ---------------------------------------------
 
@@ -127,37 +126,12 @@ export interface ToolResult {
   details?: unknown;
 }
 
-// Either a response or an event arrives on the wire.
-export type Incoming = Response | Event;
-
-// ---- State (from get_state / get_session_stats) --------------------------
-
-export interface SessionState {
-  model: Model | null;
-  thinkingLevel: ThinkingLevel;
-  isStreaming: boolean;
-  isCompacting: boolean;
-  sessionId: string;
-  sessionFile?: string; // path to the session's .jsonl (used to reattach)
-  sessionName?: string;
-  messageCount: number;
-}
+// ---- State (from get_session_stats) ----------------------------------------
 
 export interface SessionStats {
   tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; total: number };
   cost: number;
   contextUsage?: { tokens: number | null; contextWindow: number; percent: number | null };
-}
-
-export interface ForkMessage {
-  entryId: string;
-  text: string;
-}
-
-export interface PiCommand {
-  name: string;
-  description?: string;
-  source: "extension" | "prompt" | "skill";
 }
 
 // Live process status for a session (from the backend manager).

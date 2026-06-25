@@ -2,21 +2,26 @@ import { useEffect, useRef, useState } from "react";
 import { fmtCost, fmtPercent, fmtTokens } from "../lib/fmt";
 import type { SessionInfo, SessionStats } from "../api/types";
 import type { Session } from "../hooks/useSession";
-import { Sheet } from "./Sheet";
 import { RenameDialog } from "./RenameDialog";
 import { Skeleton } from "./Skeleton";
-import styles from "./SessionMenu.module.css";
+import styles from "./SessionList.module.css";
 
-const POLL_MS = 2000; // refresh session list while menu is open
+const POLL_MS = 2000;
 
 interface Props {
-  open: boolean;
-  onClose: () => void;
   session: Session;
+  active?: boolean;
+  onNavigate?: () => void;
+  variant?: "default" | "sidebar";
 }
 
-export function SessionMenu({ open, onClose, session }: Props) {
-  const { sessionName, stats, newSession, switchSession, stopSession, renameSession } = session;
+export function SessionList({
+  session,
+  active = true,
+  onNavigate,
+  variant = "default",
+}: Props) {
+  const { sessionName, stats, sessionId, newSession, switchSession, stopSession, renameSession } = session;
   const [list, setList] = useState<SessionInfo[] | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -30,9 +35,8 @@ export function SessionMenu({ open, onClose, session }: Props) {
       .catch(() => setList([]));
   };
 
-  // Initial load + polling while open.
   useEffect(() => {
-    if (!open) {
+    if (!active) {
       if (pollRef.current !== null) {
         clearInterval(pollRef.current);
         pollRef.current = null;
@@ -47,20 +51,20 @@ export function SessionMenu({ open, onClose, session }: Props) {
         pollRef.current = null;
       }
     };
-  }, [open]);
+  }, [active]);
 
   const start = async () => {
     setBusy(true);
     await newSession();
     setBusy(false);
-    onClose();
+    onNavigate?.();
   };
 
   const resume = async (id: string) => {
     setBusy(true);
     await switchSession(id);
     setBusy(false);
-    onClose();
+    onNavigate?.();
   };
 
   const stop = async (e: React.MouseEvent, id: string) => {
@@ -71,9 +75,6 @@ export function SessionMenu({ open, onClose, session }: Props) {
     setBusy(false);
   };
 
-  // Wait for rename to persist before refreshing the list — the header updates
-  // via useSession.refreshState inside renameSession; the list needs an extra
-  // fetch so the saved-session name is also current.
   const handleRename = async (name: string) => {
     await renameSession(name);
     await refresh();
@@ -81,7 +82,8 @@ export function SessionMenu({ open, onClose, session }: Props) {
 
   return (
     <>
-      <Sheet open={open} title="Sessions" onClose={onClose}>
+      <div className={`${styles.root} ${variant === "sidebar" ? styles.sidebar : ""}`}>
+        {variant === "sidebar" && <h2 className={styles.title}>Sessions</h2>}
         {stats && <Stats stats={stats} />}
 
         <div className={styles.actions}>
@@ -96,14 +98,18 @@ export function SessionMenu({ open, onClose, session }: Props) {
         <div className={styles.listLabel}>Resume</div>
         <ul className={styles.list}>
           {list === null && [1, 2, 3].map((i) => (
-            <li key={i} style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
+            <li key={i} className={styles.skeletonRow}>
               <Skeleton width="60%" height="0.9em" />
               <Skeleton width="85%" height="0.75em" />
             </li>
           ))}
           {list !== null && list.map((s) => (
             <li key={s.id} className={styles.row}>
-              <button className={styles.item} onClick={() => resume(s.id)} disabled={busy}>
+              <button
+                className={`${styles.item} ${s.id === sessionId ? styles.active : ""}`}
+                onClick={() => resume(s.id)}
+                disabled={busy}
+              >
                 <span className={styles.name}>
                   <StatusDot status={s.status} />
                   {s.name}
@@ -130,7 +136,7 @@ export function SessionMenu({ open, onClose, session }: Props) {
             <li className={styles.empty}>No saved sessions yet.</li>
           )}
         </ul>
-      </Sheet>
+      </div>
 
       <RenameDialog
         open={renaming}
@@ -144,9 +150,6 @@ export function SessionMenu({ open, onClose, session }: Props) {
 
 function Stats({ stats }: { stats: SessionStats }) {
   const ctx = stats.contextUsage;
-  // input+output is what the user actually sent/received.
-  // total includes cache-read tokens which re-count the full context on every
-  // turn and can be 10-100x larger — misleading as a headline figure.
   const activeTokens = stats.tokens.input + stats.tokens.output;
   return (
     <div className={styles.stats}>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
 import styles from "./RenameDialog.module.css";
 
@@ -13,7 +13,6 @@ interface Props {
 export function RenameDialog({ open, initial, onClose, onSave }: Props) {
   const [name, setName] = useState(initial);
   const [saving, setSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -37,7 +36,6 @@ export function RenameDialog({ open, initial, onClose, onSave }: Props) {
   return (
     <Modal open={open} title="Rename session" onClose={saving ? undefined : onClose}>
       <input
-        ref={inputRef}
         className={styles.input}
         value={name}
         autoFocus

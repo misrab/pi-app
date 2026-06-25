@@ -161,12 +161,6 @@ export class Manager {
     }));
   }
 
-  async closeAll(): Promise<void> {
-    const all = [...this.sessions.values()];
-    this.sessions.clear();
-    await Promise.all(all.map((ms) => ms.dispose()));
-  }
-
   // --- internals ------------------------------------------------------------
 
   private liveCount(): number {

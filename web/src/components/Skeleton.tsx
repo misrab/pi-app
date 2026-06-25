@@ -19,7 +19,7 @@ export function Skeleton({ width = "100%", height = "1em", radius = "6px", class
 }
 
 /** A stack of skeleton lines mimicking text content. */
-export function SkeletonText({ lines = 3 }: { lines?: number }) {
+function SkeletonText({ lines = 3 }: { lines?: number }) {
   const widths = ["85%", "100%", "70%", "90%", "60%"];
   return (
     <div className={styles.text}>

@@ -1,4 +1,5 @@
 import type { Model, PlanMode, ThinkingLevel } from "../api/types";
+import { trimModelName } from "../lib/fmt";
 import { Skeleton } from "./Skeleton";
 import styles from "./Toolbar.module.css";
 
@@ -37,7 +38,7 @@ export function Toolbar({
         {initializing
           ? <Skeleton width="100px" height="1em" />
           : <>
-              <span className={styles.modelName}>{model?.name?.replace(/\s*[·•]\s*$/, "") ?? "no model"}</span>
+              <span className={styles.modelName}>{model ? trimModelName(model.name) : "no model"}</span>
               <ChevronDown />
             </>
         }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { RpcClient, type ConnectionStatus } from "../api/rpc";
+import { RpcClient, sessionIdFromPath, type ConnectionStatus } from "../api/rpc";
 import type { Attachment, Event, ImageContent, Model, PlanMode, SessionStats, StoredMessage, ThinkingLevel } from "../api/types";
 
 export type ActivityState = "idle" | "thinking" | "tool" | "working" | "queued" | "reconnecting" | "connecting";
@@ -68,7 +68,7 @@ function messagesToBlocks(messages: StoredMessage[] | null | undefined): Block[]
   const blocks: Block[] = [];
   for (const m of messages ?? []) {
     if (m.role === "user") {
-      blocks.push({ id: nextId(), kind: "user", text: contentToText(m.content) });
+      blocks.push({ id: nextId(), kind: "user", text: textFromContent(m.content) });
     } else if (m.role === "assistant") {
       for (const c of asArray(m.content)) {
         if (c?.type === "text" && c.text) {
@@ -87,12 +87,15 @@ function messagesToBlocks(messages: StoredMessage[] | null | undefined): Block[]
         }
       }
     } else if (m.role === "toolResult") {
-      const text = contentToText(m.content);
+      const text = textFromContent(m.content);
       const imgs = contentImages(m.content);
-      const tool = [...blocks].reverse().find((b) => b.kind === "tool" && b.toolId === m.toolCallId);
-      if (tool && tool.kind === "tool") {
-        tool.result = text;
-        tool.isError = m.isError;
+      const revIdx = [...blocks].reverse().findIndex((b) => b.kind === "tool" && b.toolId === m.toolCallId);
+      if (revIdx >= 0) {
+        const toolIdx = blocks.length - 1 - revIdx;
+        const tool = blocks[toolIdx];
+        if (tool.kind === "tool") {
+          blocks[toolIdx] = { ...tool, result: text, isError: m.isError };
+        }
       }
       for (const url of imgs) blocks.push({ id: nextId(), kind: "image", url });
     }
@@ -100,16 +103,17 @@ function messagesToBlocks(messages: StoredMessage[] | null | undefined): Block[]
   return blocks;
 }
 
-function asArray(content: unknown): any[] {
-  return Array.isArray(content) ? content : [];
-}
-
-function contentToText(content: unknown): string {
+function textFromContent(content: unknown): string {
   if (typeof content === "string") return content;
-  return asArray(content)
+  if (!Array.isArray(content)) return "";
+  return content
     .filter((c) => c?.type === "text" && c.text)
     .map((c) => c.text)
     .join("\n");
+}
+
+function asArray(content: unknown): any[] {
+  return Array.isArray(content) ? content : [];
 }
 
 function handleEvent(state: State, event: Event): State {
@@ -162,12 +166,12 @@ function handleEvent(state: State, event: Event): State {
     }
 
     case "tool_execution_update": {
-      const text = extractText(event.partialResult?.content);
+      const text = textFromContent(event.partialResult?.content);
       return updateTool(state, event.toolCallId, (b) => ({ ...b, result: text }));
     }
 
     case "tool_execution_end": {
-      const text = extractText(event.result?.content);
+      const text = textFromContent(event.result?.content);
       const imgs = contentImages(event.result?.content);
       let next = updateTool(state, event.toolCallId, (b) => ({
         ...b,
@@ -189,14 +193,6 @@ function handleEvent(state: State, event: Event): State {
 function updateTool(state: State, toolId: string, fn: (b: Extract<Block, { kind: "tool" }>) => Block): State {
   const blocks = state.blocks.map((b) => (b.kind === "tool" && b.toolId === toolId ? fn(b) : b));
   return { ...state, blocks };
-}
-
-function extractText(content?: { type: string; text?: string; data?: string; mimeType?: string }[]): string {
-  if (!content) return "";
-  return content
-    .filter((c) => c.type === "text" && c.text)
-    .map((c) => c.text)
-    .join("\n");
 }
 
 function contentImages(content: unknown): string[] {
@@ -235,6 +231,8 @@ export function useSession() {
   const loading = useRef(false);
   const buffer = useRef<Event[]>([]);
   const attachGen = useRef(0);
+  const handleAgentEndRef = useRef<() => void>(() => {});
+  const onAttachedRef = useRef<() => Promise<void>>(async () => {});
 
   const refreshStats = useCallback(async () => {
     const res = await client.request<SessionStats>({ type: "get_session_stats" });
@@ -250,6 +248,8 @@ export function useSession() {
     void refreshStats();
     void loadMessages();
   }, [refreshStats, loadMessages]);
+
+  handleAgentEndRef.current = handleAgentEnd;
 
   const flushEvents = useCallback(
     (events: Event[]) => {
@@ -268,11 +268,11 @@ export function useSession() {
         return;
       }
       dispatch({ type: "event", event });
-      if (event.type === "agent_end") handleAgentEnd();
+      if (event.type === "agent_end") handleAgentEndRef.current();
     });
     const offStatus = client.onStatus((s) => {
       setStatus(s);
-      if (s === "open") void onAttached();
+      if (s === "open") void onAttachedRef.current();
     });
     client.connect();
     return () => {
@@ -280,8 +280,7 @@ export function useSession() {
       offStatus();
       client.close();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [client]);
 
   const refreshState = useCallback(async () => {
     const res = await client.request<{
@@ -309,11 +308,12 @@ export function useSession() {
     buffer.current = [];
     loading.current = false;
     flushEvents(queued);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, flushEvents, loadMessages, refreshState, refreshStats]);
+  }, [flushEvents, loadMessages, refreshState, refreshStats]);
+
+  onAttachedRef.current = onAttached;
 
   const sendPromptNow = useCallback(
-    (text: string, attachments?: Attachment[], opts?: { skipDispatch?: boolean; streamingBehavior?: "steer" | "followUp" }) => {
+    (text: string, attachments?: Attachment[], opts?: { streamingBehavior?: "steer" | "followUp" }) => {
       const images: ImageContent[] = (attachments ?? [])
         .filter((a) => a.kind === "image")
         .map((a) => ({ type: "image", data: a.data, mimeType: a.mimeType }));
@@ -326,9 +326,12 @@ export function useSession() {
       const message = textPrefix ? `${textPrefix}\n${text}` : text;
       const imageUrls = images.map((img) => `data:${img.mimeType};base64,${img.data}`);
 
-      if (!opts?.skipDispatch) {
-        dispatch({ type: "user", text, imageUrls: imageUrls.length ? imageUrls : undefined, queued: opts?.streamingBehavior === "followUp" });
-      }
+      dispatch({
+        type: "user",
+        text,
+        imageUrls: imageUrls.length ? imageUrls : undefined,
+        queued: opts?.streamingBehavior === "followUp",
+      });
 
       if (planMode === "plan") {
         client.send({ type: "run_command", name: "plan", args: message });
@@ -372,7 +375,7 @@ export function useSession() {
     client.send({ type: "abort" });
   }, [client]);
 
-  const newSession = useCallback(async () => {
+  const resetForSession = useCallback(() => {
     dispatch({ type: "reset" });
     setModel(null);
     setThinkingLevel("medium");
@@ -381,26 +384,33 @@ export function useSession() {
     setAskMode(false);
     setPlanMode("off");
     setInitializing(true);
+  }, []);
+
+  const newSession = useCallback(async () => {
+    resetForSession();
     client.switchTo(undefined);
     setSessionId(client.session);
-  }, [client]);
+  }, [client, resetForSession]);
 
   const switchSession = useCallback(
-    async (sessionPath: string) => {
-      dispatch({ type: "reset" });
-      setModel(null);
-      setThinkingLevel("medium");
-      setSessionName(undefined);
-      setStats(null);
-      setAskMode(false);
-      setPlanMode("off");
-      setInitializing(true);
-      client.switchTo(sessionPath);
+    async (sessionPath: string, historyMode: "push" | "replace" | "none" = "push") => {
+      if (sessionPath === client.session && historyMode === "none") return;
+      resetForSession();
+      client.switchTo(sessionPath, historyMode);
       setSessionId(client.session);
-      return true;
     },
-    [client],
+    [client, resetForSession],
   );
+
+  useEffect(() => {
+    const onPopState = () => {
+      const id = sessionIdFromPath();
+      if (!id || id === client.session) return;
+      void switchSession(id, "none");
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [client, switchSession]);
 
   const stopSession = useCallback(async (sessionPath: string) => {
     await fetch(`/api/sessions/stop?id=${encodeURIComponent(sessionPath)}`, { method: "POST" });
@@ -424,13 +434,33 @@ export function useSession() {
     if (res.success && res.data) setThinkingLevel(res.data.level);
   }, [client]);
 
+  const getAvailableModels = useCallback(async () => {
+    const res = await client.request<{ models: Model[] }>({ type: "get_available_models" });
+    return res.success && res.data ? res.data.models : [];
+  }, [client]);
+
+  const pickModel = useCallback(
+    async (provider: string, modelId: string) => {
+      await client.request({ type: "set_model", provider, modelId });
+      await refreshState();
+    },
+    [client, refreshState],
+  );
+
+  const pickThinkingLevel = useCallback(
+    async (level: ThinkingLevel) => {
+      await client.request({ type: "set_thinking_level", level });
+      await refreshState();
+    },
+    [client, refreshState],
+  );
+
   const activity = useMemo(
     () => deriveActivity(state.streaming, status, state.blocks, state.queuedCount),
     [state.streaming, status, state.blocks, state.queuedCount],
   );
 
   return {
-    client,
     sessionId,
     blocks: state.blocks,
     streaming: state.streaming,
@@ -449,12 +479,13 @@ export function useSession() {
     stopSession,
     renameSession,
     cycleThinking,
+    getAvailableModels,
+    pickModel,
+    pickThinkingLevel,
     askMode,
     toggleAskMode,
     planMode,
     cyclePlanMode,
-    refreshState,
-    refreshStats,
   };
 }
 

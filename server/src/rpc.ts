@@ -3,6 +3,8 @@
 // handleCommand so the existing frontend works unchanged. Events are delivered
 // separately (manager fan-out); this only handles command -> response.
 
+import { msg } from "./util.js";
+
 type Respond = (obj: unknown) => void;
 
 const ok = (id: string | undefined, command: string, data?: unknown) =>
@@ -164,8 +166,4 @@ function collectCommands(session: any): any[] {
     /* best-effort */
   }
   return commands;
-}
-
-function msg(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
 }

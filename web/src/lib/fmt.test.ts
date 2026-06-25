@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fmtCost, fmtInt, fmtPercent, fmtTokens } from "./fmt";
+import { fmtCost, fmtPercent, fmtTokens, trimModelName } from "./fmt";
 
 describe("fmtCost", () => {
   it("renders zero", () => expect(fmtCost(0)).toBe("$0.00"));
@@ -17,6 +17,6 @@ describe("fmtPercent", () => {
   it("two decimals", () => expect(fmtPercent(12.3456)).toBe("12.35%"));
 });
 
-describe("fmtInt", () => {
-  it("rounds and groups", () => expect(fmtInt(1234567.6)).toBe("1,234,568"));
+describe("trimModelName", () => {
+  it("strips trailing separators", () => expect(trimModelName("Claude ·")).toBe("Claude"));
 });

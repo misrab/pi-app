@@ -4,9 +4,9 @@
   gap: 0.5rem;
   padding: 0.35rem 1rem;
   font-size: 0.75rem;
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  color: var(--muted);
+  border-bottom: 1px solid var(--panel-2);
+  background: var(--panel);
 }
 
 .bar.active {

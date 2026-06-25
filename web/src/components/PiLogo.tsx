@@ -4,10 +4,9 @@
  */
 interface Props {
   size?: number;
-  className?: string;
 }
 
-export function PiLogo({ size = 20, className }: Props) {
+export function PiLogo({ size = 20 }: Props) {
   return (
     <svg
       width={size}
@@ -15,7 +14,6 @@ export function PiLogo({ size = 20, className }: Props) {
       viewBox="0 0 20 20"
       fill="none"
       aria-hidden="true"
-      className={className}
     >
       {/* horizontal bar */}
       <line

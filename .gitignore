@@ -9,3 +9,4 @@ pi.env
 .DS_Store
 *.log
 .dev-sessions/
+*.tsbuildinfo

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Model, ThinkingLevel } from "../api/types";
 import type { Session } from "../hooks/useSession";
+import { trimModelName } from "../lib/fmt";
 import { Sheet } from "./Sheet";
 import { Skeleton } from "./Skeleton";
 import styles from "./ModelPicker.module.css";
@@ -14,36 +15,22 @@ interface Props {
 }
 
 export function ModelPicker({ open, onClose, session }: Props) {
-  const { client, model, thinkingLevel, refreshState } = session;
+  const { model, thinkingLevel, getAvailableModels, pickModel, pickThinkingLevel } = session;
   const [models, setModels] = useState<Model[]>([]);
   const [enabledModels, setEnabledModels] = useState<string[] | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    // Load models independently so the list always renders.
-    client.request<{ models: Model[] }>({ type: "get_available_models" })
-      .then((res) => {
-        if (res.success && res.data) setModels(res.data.models);
-      })
+    void getAvailableModels()
+      .then(setModels)
       .catch(() => {});
-    // Settings filtering is best-effort: if it fails, show all models.
     fetch("/api/settings")
       .then((r) => (r.ok ? r.json() : null))
       .then((s) => {
         if (s && Array.isArray(s.enabledModels)) setEnabledModels(s.enabledModels);
       })
       .catch(() => {});
-  }, [open, client]);
-
-  const pick = async (m: Model) => {
-    await client.request({ type: "set_model", provider: m.provider, modelId: m.id });
-    await refreshState();
-  };
-
-  const setLevel = async (level: ThinkingLevel) => {
-    await client.request({ type: "set_thinking_level", level });
-    await refreshState();
-  };
+  }, [open, getAvailableModels]);
 
   return (
     <Sheet open={open} title="Model" onClose={onClose}>
@@ -54,9 +41,9 @@ export function ModelPicker({ open, onClose, session }: Props) {
             <li key={`${m.provider}/${m.id}`}>
               <button
                 className={`${styles.item} ${model?.id === m.id ? styles.active : ""}`}
-                onClick={() => pick(m)}
+                onClick={() => pickModel(m.provider, m.id)}
               >
-                <span className={styles.name}>{m.name?.replace(/\s*[·•]\s*$/, "")}</span>
+                <span className={styles.name}>{trimModelName(m.name)}</span>
                 <span className={styles.provider}>{m.provider}</span>
                 {model?.id === m.id && <span className={styles.check}>✓</span>}
               </button>
@@ -81,7 +68,7 @@ export function ModelPicker({ open, onClose, session }: Props) {
               <button
                 key={l}
                 className={`${styles.level} ${thinkingLevel === l ? styles.levelActive : ""}`}
-                onClick={() => setLevel(l)}
+                onClick={() => pickThinkingLevel(l)}
               >
                 {l}
               </button>

@@ -1,9 +1,28 @@
-import { WsRpcClient, type ConnectionStatus, type WsRpcResponse } from "make-pwa/ws-rpc";
+import { WsRpcClient, type ConnectionStatus } from "make-pwa/ws-rpc";
 import type { Command, Event, Response } from "./types";
 
 export type { ConnectionStatus };
 
 const SESSION_KEY = "pi-app:session-id";
+const SESSION_PATH = /^\/s\/([^/]+)$/;
+
+export type SessionHistoryMode = "push" | "replace" | "none";
+
+/** Read the session id from `/s/:id`, if present. */
+export function sessionIdFromPath(): string | null {
+  const m = location.pathname.match(SESSION_PATH);
+  return m?.[1] ?? null;
+}
+
+function sessionPath(id: string): string {
+  return `/s/${encodeURIComponent(id)}`;
+}
+
+function syncHistory(id: string, mode: SessionHistoryMode): void {
+  const path = sessionPath(id);
+  if (mode === "push") history.pushState({}, "", path);
+  else if (mode === "replace") history.replaceState({}, "", path);
+}
 
 /**
  * Pi-app RPC client: session-scoped WebSocket to the backend.
@@ -17,8 +36,11 @@ export class RpcClient {
   constructor(url?: string) {
     const proto = location.protocol === "https:" ? "wss" : "ws";
     this.base = url ?? `${proto}://${location.host}/ws`;
-    this.sessionId = sessionStorage.getItem(SESSION_KEY) ?? newId();
+    const fromPath = sessionIdFromPath();
+    this.sessionId = fromPath ?? sessionStorage.getItem(SESSION_KEY) ?? newId();
+    // Tab-scoped fallback for first visit to `/`; URL is source of truth after sync.
     sessionStorage.setItem(SESSION_KEY, this.sessionId);
+    if (!fromPath) syncHistory(this.sessionId, "replace");
 
     this.inner = new WsRpcClient<Command, Event>({
       getUrl: () => `${this.base}?session=${encodeURIComponent(this.sessionId)}`,
@@ -33,9 +55,10 @@ export class RpcClient {
     this.inner.connect();
   }
 
-  switchTo(sessionId?: string): void {
+  switchTo(sessionId?: string, historyMode: SessionHistoryMode = "push"): void {
     this.sessionId = sessionId ?? newId();
     sessionStorage.setItem(SESSION_KEY, this.sessionId);
+    syncHistory(this.sessionId, historyMode);
     this.inner.reconnect();
   }
 
@@ -63,6 +86,3 @@ export class RpcClient {
 function newId(): string {
   return crypto.randomUUID();
 }
-
-// Re-export for typing convenience in consumers.
-export type { WsRpcResponse as RpcResponse };

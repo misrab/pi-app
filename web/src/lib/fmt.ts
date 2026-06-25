@@ -43,10 +43,7 @@ export function fmtPercent(p: number): string {
   return `${p.toFixed(2)}%`;
 }
 
-/**
- * Plain integer with comma separators.
- *   1234567 → "1,234,567"
- */
-export function fmtInt(n: number): string {
-  return Math.round(n).toLocaleString("en-US");
+/** Strip trailing separator glyphs from model display names. */
+export function trimModelName(name?: string): string {
+  return name?.replace(/\s*[·•]\s*$/, "") ?? "";
 }
