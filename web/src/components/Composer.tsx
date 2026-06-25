@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Attachment } from "../api/types";
+import { useDraft } from "../hooks/useDraft";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import styles from "./Composer.module.css";
 
@@ -63,14 +64,15 @@ async function fileToAttachment(file: File): Promise<Attachment | null> {
 }
 
 interface Props {
+  sessionId: string | undefined;
   streaming: boolean;
   disabled: boolean;
   onSend: (text: string, attachments?: Attachment[]) => void;
   onAbort: () => void;
 }
 
-export function Composer({ streaming, disabled, onSend, onAbort }: Props) {
-  const [text, setText] = useState("");
+export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Props) {
+  const { text, setText, clearDraft } = useDraft(sessionId);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [unsupported, setUnsupported] = useState<string[]>([]);
@@ -172,7 +174,7 @@ export function Composer({ streaming, disabled, onSend, onAbort }: Props) {
     const trimmed = text.trim();
     if (!trimmed && !attachments.length) return;
     onSend(trimmed, attachments.length ? attachments : undefined);
-    setText("");
+    clearDraft();
     setAttachments([]);
     dictateBase.current = "";
     if (ref.current) ref.current.style.height = "auto";

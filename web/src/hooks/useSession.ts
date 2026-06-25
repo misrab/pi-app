@@ -202,6 +202,7 @@ export function useSession() {
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>("medium");
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [sessionName, setSessionName] = useState<string | undefined>();
+  const [sessionId, setSessionId] = useState<string>(() => client.session);
   const [askMode, setAskMode] = useState(false);
   const [planMode, setPlanMode] = useState<PlanMode>("off");
 
@@ -361,6 +362,7 @@ export function useSession() {
     setStats(null);
     setPlanMode("off");
     client.switchTo(undefined);
+    setSessionId(client.session);
   }, [client]);
 
   // Load the current conversation's messages into the transcript.
@@ -375,6 +377,7 @@ export function useSession() {
     async (sessionPath: string) => {
       dispatch({ type: "reset" });
       client.switchTo(sessionPath);
+      setSessionId(client.session);
       return true;
     },
     [client],
@@ -406,6 +409,7 @@ export function useSession() {
 
   return {
     client,
+    sessionId,
     blocks: state.blocks,
     streaming: state.streaming,
     status,

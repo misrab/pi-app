@@ -44,6 +44,7 @@ export function App() {
       />
 
       <Composer
+        sessionId={session.sessionId}
         streaming={session.streaming}
         disabled={session.status !== "open" || session.initializing}
         onSend={session.sendPrompt}
