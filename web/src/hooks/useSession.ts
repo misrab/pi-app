@@ -74,6 +74,13 @@ function reducer(state: State, action: Action): State {
     }
 
     case "load":
+      // A `load` is an async transcript reconcile fired after agent_end. By the
+      // time get_messages resolves, a queued follow-up may have already started
+      // the next turn (agent_start → streaming). Never clobber an in-flight
+      // stream: live event-driven blocks are authoritative while streaming, so
+      // only reconcile when idle. Without this guard the Stop button disappears
+      // mid-turn and the agent can't be interrupted.
+      if (state.streaming) return state;
       return { blocks: messagesToBlocks(action.messages), streaming: false, queuedCount: 0 };
 
     case "event":
