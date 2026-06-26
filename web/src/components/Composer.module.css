@@ -211,3 +211,106 @@
   background: var(--text);
   color: var(--bg);
 }
+
+.queueBtn {
+  background: var(--accent);
+  color: var(--bg);
+}
+.queueBtn:disabled {
+  opacity: 0.3;
+}
+
+/* ── Message queue ───────────────────────────────────────────────────────── */
+.queueSection {
+  padding: 0 2px 8px;
+  animation: slideUp 0.15s ease;
+}
+
+.queueCaption {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.queueList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.queueItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--panel-2);
+  border-radius: 10px;
+  padding: 6px 8px;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+.queueItemDragging {
+  opacity: 0.5;
+  border-color: var(--accent);
+}
+
+.queueHandle {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.queueText {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font-size: 0.82rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: text;
+}
+
+.queueAttachHint {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.queueEditInput {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 4px 8px;
+  outline: none;
+}
+
+.queueRemove {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--muted);
+  padding: 0 2px;
+  border-radius: 3px;
+  transition: color 0.1s;
+}
+.queueRemove:hover {
+  color: var(--error);
+}

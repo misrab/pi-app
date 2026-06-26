@@ -1,7 +1,9 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { Attachment } from "../api/types";
+import type { QueueItem } from "../hooks/useSession";
 import { useDraft } from "../hooks/useDraft";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
+import { t } from "../lib/i18n";
 import styles from "./Composer.module.css";
 
 // ── File handling ──────────────────────────────────────────────────────────
@@ -48,31 +50,46 @@ async function fileToAttachment(file: File): Promise<Attachment | null> {
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-const MAX_HEIGHT = 200; // ~8 lines before the box scrolls
+const MAX_HEIGHT = 200;
 
 interface Props {
   sessionId: string | undefined;
   streaming: boolean;
   disabled: boolean;
+  queue: QueueItem[];
   onSend: (text: string, attachments?: Attachment[]) => void;
+  onSendImmediate: (text: string, attachments?: Attachment[]) => void;
+  onRemoveQueued: (id: string) => void;
+  onEditQueued: (id: string, text: string) => void;
+  onReorderQueued: (from: number, to: number) => void;
   onAbort: () => void;
 }
 
-export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Props) {
+export function Composer({
+  sessionId,
+  streaming,
+  disabled,
+  queue,
+  onSend,
+  onSendImmediate,
+  onRemoveQueued,
+  onEditQueued,
+  onReorderQueued,
+  onAbort,
+}: Props) {
   const { text, setText, clearDraft } = useDraft(sessionId);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [unsupported, setUnsupported] = useState<string[]>([]);
   const [focused, setFocused] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const dictateBase = useRef("");
   const dragCounter = useRef(0);
 
-  // ── Auto-grow ─────────────────────────────────────────────────────────────
-  // Key insight: set height to 0 (invisible under overflow:hidden) then
-  // immediately read scrollHeight — both in the same sync call, so the browser
-  // never paints the collapsed state. useLayoutEffect runs before paint.
   const grow = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -82,14 +99,12 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
 
   useLayoutEffect(grow, [text, grow]);
 
-  // ── Unsupported notice timeout ────────────────────────────────────────────
   useLayoutEffect(() => {
     if (!unsupported.length) return;
-    const t = setTimeout(() => setUnsupported([]), 3000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setUnsupported([]), 3000);
+    return () => clearTimeout(timer);
   }, [unsupported]);
 
-  // ── File helpers ──────────────────────────────────────────────────────────
   const addFiles = useCallback(async (files: File[]) => {
     const results = await Promise.all(files.map(fileToAttachment));
     const ok: Attachment[] = [];
@@ -104,7 +119,6 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
     [],
   );
 
-  // ── Drag & drop ───────────────────────────────────────────────────────────
   const onDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     dragCounter.current++;
@@ -122,7 +136,6 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
     if (files.length) void addFiles(files);
   }, [addFiles]);
 
-  // ── Paste images ──────────────────────────────────────────────────────────
   const onPaste = useCallback((e: React.ClipboardEvent) => {
     const imgs = Array.from(e.clipboardData.items)
       .filter((item) => IMAGE_TYPES.has(item.type))
@@ -131,7 +144,6 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
     if (imgs.length) { e.preventDefault(); void addFiles(imgs); }
   }, [addFiles]);
 
-  // ── Speech ────────────────────────────────────────────────────────────────
   const onTranscript = useCallback((spoken: string) => {
     const base = dictateBase.current;
     setText(base ? `${base} ${spoken}`.trimStart() : spoken);
@@ -144,16 +156,44 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
     speech.start();
   };
 
-  // ── Submit ────────────────────────────────────────────────────────────────
+  const resetInput = () => {
+    clearDraft();
+    setAttachments([]);
+    dictateBase.current = "";
+  };
+
   const submit = () => {
     if (speech.listening) speech.stop();
     const trimmed = text.trim();
     if (!trimmed && !attachments.length) return;
     onSend(trimmed, attachments.length ? attachments : undefined);
-    clearDraft();
-    setAttachments([]);
-    dictateBase.current = "";
-    // Height resets automatically via useLayoutEffect when text clears.
+    resetInput();
+  };
+
+  const submitImmediate = () => {
+    if (speech.listening) speech.stop();
+    const trimmed = text.trim();
+    if (!trimmed && !attachments.length) return;
+    onSendImmediate(trimmed, attachments.length ? attachments : undefined);
+    resetInput();
+  };
+
+  const startEdit = (item: QueueItem) => {
+    setEditingId(item.id);
+    setEditText(item.text);
+  };
+
+  const commitEdit = () => {
+    if (editingId && editText.trim()) {
+      onEditQueued(editingId, editText.trim());
+    }
+    setEditingId(null);
+    setEditText("");
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditText("");
   };
 
   const canSend = !disabled && (text.trim().length > 0 || attachments.length > 0);
@@ -177,7 +217,6 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
-      {/* Hidden file input */}
       <input
         ref={fileRef}
         type="file"
@@ -191,14 +230,71 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
         }}
       />
 
-      {/* Unsupported notice */}
       {unsupported.length > 0 && (
         <p className={styles.unsupported}>
           Can't attach: {unsupported.join(", ")} — images &amp; text files only
         </p>
       )}
 
-      {/* Attachment chips */}
+      {queue.length > 0 && (
+        <div className={styles.queueSection}>
+          <span className={styles.queueCaption}>{t("queueCountLabel", queue.length)}</span>
+          <ul className={styles.queueList}>
+            {queue.map((item, idx) => (
+              <li
+                key={item.id}
+                className={`${styles.queueItem} ${dragIdx === idx ? styles.queueItemDragging : ""}`}
+                draggable={editingId !== item.id}
+                onDragStart={() => setDragIdx(idx)}
+                onDragEnd={() => setDragIdx(null)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  if (dragIdx !== null && dragIdx !== idx) onReorderQueued(dragIdx, idx);
+                  setDragIdx(null);
+                }}
+              >
+                <span className={styles.queueHandle} aria-hidden="true" title={t("queueDragHandle")}>
+                  <GripIcon />
+                </span>
+                {editingId === item.id ? (
+                  <input
+                    className={styles.queueEditInput}
+                    value={editText}
+                    autoFocus
+                    onChange={(e) => setEditText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                    onBlur={commitEdit}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.queueText}
+                    onClick={() => startEdit(item)}
+                    title={t("queueEdit")}
+                  >
+                    {item.text}
+                    {item.attachments && item.attachments.length > 0 && (
+                      <span className={styles.queueAttachHint}> · {item.attachments.length}</span>
+                    )}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={styles.queueRemove}
+                  onClick={() => onRemoveQueued(item.id)}
+                  aria-label={t("queueRemove")}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {attachments.length > 0 && (
         <div className={styles.attachBar}>
           {attachments.map((a) => (
@@ -208,6 +304,7 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
                 : <span className={styles.chipIcon}><FileIcon /></span>}
               <span className={styles.chipName}>{a.name}</span>
               <button
+                type="button"
                 className={styles.chipRemove}
                 onClick={() => removeAttachment(a.id)}
                 aria-label={`Remove ${a.name}`}
@@ -217,10 +314,7 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
         </div>
       )}
 
-      {/* Unified input box — single border, buttons inline with textarea */}
       <div className={boxClass}>
-
-        {/* Drag overlay inside the box */}
         {dragOver && (
           <div className={styles.dropOverlay}>
             <UploadIcon />
@@ -229,6 +323,7 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
         )}
 
         <button
+          type="button"
           className={styles.iconBtn}
           onClick={() => fileRef.current?.click()}
           disabled={disabled}
@@ -241,13 +336,21 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
         <textarea
           ref={textareaRef}
           className={styles.textarea}
-          placeholder="Message pi…"
+          placeholder={streaming ? t("composerPlaceholderQueue") : t("composerPlaceholder")}
           rows={1}
           value={text}
           disabled={disabled}
           onChange={(e) => { setText(e.target.value); grow(); }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              submitImmediate();
+              return;
+            }
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              submit();
+            }
           }}
           onPaste={onPaste}
           onFocus={() => {
@@ -260,6 +363,7 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
         <div className={styles.actions}>
           {speech.supported && (
             <button
+              type="button"
               className={`${styles.iconBtn} ${speech.listening ? styles.micActive : ""}`}
               onClick={toggleMic}
               disabled={disabled}
@@ -269,20 +373,49 @@ export function Composer({ sessionId, streaming, disabled, onSend, onAbort }: Pr
             </button>
           )}
           {streaming
-            ? <button className={`${styles.actionBtn} ${styles.stopBtn}`} onClick={onAbort} aria-label="Stop">
+            ? <button type="button" className={`${styles.actionBtn} ${styles.stopBtn}`} onClick={onAbort} aria-label="Stop">
                 <StopIcon />
               </button>
-            : <button type="submit" className={`${styles.actionBtn} ${styles.sendBtn}`} disabled={!canSend} aria-label="Send">
+            : <button type="submit" className={`${styles.actionBtn} ${styles.sendBtn}`} disabled={!canSend} aria-label={t("queueSend")} title={t("queueSend")}>
                 <SendIcon />
               </button>
           }
+          {streaming && (
+            <button
+              type="button"
+              className={`${styles.actionBtn} ${styles.queueBtn}`}
+              disabled={!canSend}
+              onClick={submit}
+              aria-label={t("queueSend")}
+              title={t("queueSend")}
+            >
+              <QueueIcon />
+            </button>
+          )}
         </div>
       </div>
     </form>
   );
 }
 
-// ── Icons ──────────────────────────────────────────────────────────────────
+function GripIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" />
+      <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
+      <circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" />
+    </svg>
+  );
+}
+
+function QueueIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <polyline points="19 12 12 19 5 12" />
+    </svg>
+  );
+}
 
 function PaperclipIcon() {
   return (

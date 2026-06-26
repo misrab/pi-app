@@ -3,11 +3,17 @@ const strings = {
   activityThinking: "Thinking…",
   activityTool: "Running tool…",
   activityWorking: "Working…",
-  activityQueued: (n: number) => (n === 1 ? "1 message queued" : `${n} messages queued`),
   activityReconnecting: "Reconnecting…",
   activityConnecting: "Connecting…",
   activityReady: "Ready",
-  queuedBadge: "queued",
+  queueCountLabel: (n: number) => (n === 1 ? "1 queued" : `${n} queued`),
+  queueSend: "Send",
+  queueSendImmediate: "Send now",
+  queueRemove: "Remove",
+  queueEdit: "Edit",
+  queueDragHandle: "Drag to reorder",
+  composerPlaceholder: "Message pi…",
+  composerPlaceholderQueue: "Queue a message…",
   personaTitle: "Persona",
   askMode: "ask",
   writeMode: "write",
@@ -29,7 +35,7 @@ const strings = {
 } as const;
 
 type StringKey = keyof typeof strings;
-type FnKey = "activityQueued";
+type FnKey = "queueCountLabel";
 
 export function t(key: FnKey, n: number): string;
 export function t(key: Exclude<StringKey, FnKey>): string;

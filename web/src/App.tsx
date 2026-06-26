@@ -5,7 +5,6 @@ import { useMediaQuery } from "./hooks/useMediaQuery";
 import { Header } from "./components/Header";
 import { Toolbar } from "./components/Toolbar";
 import { Transcript } from "./components/Transcript";
-import { ActivityBar } from "./components/ActivityBar";
 import { Composer } from "./components/Composer";
 import { ModelPicker } from "./components/ModelPicker";
 import { PersonaPicker } from "./components/PersonaPicker";
@@ -44,8 +43,6 @@ export function App() {
             initializing={session.initializing}
           />
 
-          <ActivityBar queuedCount={session.queuedCount} />
-
           <Toolbar
             initializing={session.initializing}
             model={session.model}
@@ -64,7 +61,12 @@ export function App() {
             sessionId={session.sessionId}
             streaming={session.streaming}
             disabled={session.status !== "open" || session.initializing}
+            queue={session.queue}
             onSend={session.sendPrompt}
+            onSendImmediate={session.sendImmediate}
+            onRemoveQueued={session.removeQueued}
+            onEditQueued={session.editQueued}
+            onReorderQueued={session.reorderQueued}
             onAbort={session.abort}
           />
 

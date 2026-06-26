@@ -15,9 +15,15 @@ function storedPersona(): string {
 
 export type ActivityState = "idle" | "thinking" | "tool" | "working" | "queued" | "reconnecting" | "connecting";
 
+export type QueueItem = {
+  id: string;
+  text: string;
+  attachments?: Attachment[];
+};
+
 // A Block is one renderable unit in the transcript.
 export type Block =
-  | { id: string; kind: "user"; text: string; imageUrls?: string[]; queued?: boolean }
+  | { id: string; kind: "user"; text: string; imageUrls?: string[] }
   | { id: string; kind: "text"; text: string }
   | { id: string; kind: "thinking"; text: string }
   | { id: string; kind: "image"; url: string }
@@ -35,18 +41,18 @@ export type Block =
 interface State {
   blocks: Block[];
   streaming: boolean;
-  queuedCount: number;
 }
 
 type Action =
-  | { type: "user"; text: string; imageUrls?: string[]; queued?: boolean }
+  | { type: "user"; text: string; imageUrls?: string[] }
   | { type: "event"; event: Event }
   | { type: "load"; messages: StoredMessage[] }
-  | { type: "reset" }
-  | { type: "queue_sync"; steering: string[]; followUp: string[] };
+  | { type: "reset" };
 
 let uid = 0;
+let queueUid = 0;
 const nextId = () => `b${++uid}`;
+const nextQueueId = () => `q${++queueUid}`;
 
 function planModeFromName(name: string | undefined): PlanMode {
   return name?.includes("[plan]") ? "on" : "off";
@@ -55,24 +61,16 @@ function planModeFromName(name: string | undefined): PlanMode {
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "reset":
-      return { blocks: [], streaming: false, queuedCount: 0 };
+      return { blocks: [], streaming: false };
 
     case "user":
       return {
         ...state,
-        blocks: [...state.blocks, { id: nextId(), kind: "user", text: action.text, imageUrls: action.imageUrls, queued: action.queued }],
+        blocks: [...state.blocks, { id: nextId(), kind: "user", text: action.text, imageUrls: action.imageUrls }],
       };
 
-    case "queue_sync": {
-      const queuedTexts = new Set([...action.steering, ...action.followUp]);
-      const blocks = state.blocks.map((b) =>
-        b.kind === "user" ? { ...b, queued: queuedTexts.has(b.text) } : b,
-      );
-      return { ...state, blocks, queuedCount: queuedTexts.size };
-    }
-
     case "load":
-      return { blocks: messagesToBlocks(action.messages), streaming: false, queuedCount: 0 };
+      return { blocks: messagesToBlocks(action.messages), streaming: false };
 
     case "event":
       return handleEvent(state, action.event);
@@ -137,10 +135,7 @@ function handleEvent(state: State, event: Event): State {
       return { ...state, streaming: true };
 
     case "agent_end":
-      return { ...state, streaming: false, queuedCount: 0 };
-
-    case "queue_update":
-      return reducer(state, { type: "queue_sync", steering: event.steering, followUp: event.followUp });
+      return { ...state, streaming: false };
 
     case "message_update": {
       const d = event.assistantMessageEvent;
@@ -217,10 +212,10 @@ function contentImages(content: unknown): string[] {
     .map((c) => `data:${c.mimeType ?? "image/png"};base64,${c.data}`);
 }
 
-function deriveActivity(streaming: boolean, status: ConnectionStatus, blocks: Block[], queuedCount: number): ActivityState {
+function deriveActivity(streaming: boolean, status: ConnectionStatus, blocks: Block[], queueLen: number): ActivityState {
   if (status === "connecting") return "connecting";
   if (status === "closed") return "reconnecting";
-  if (!streaming) return queuedCount > 0 ? "queued" : "idle";
+  if (!streaming) return queueLen > 0 ? "queued" : "idle";
   const last = blocks[blocks.length - 1];
   if (last?.kind === "thinking") return "thinking";
   if (last?.kind === "tool" && !last.done) return "tool";
@@ -232,7 +227,9 @@ export function useSession() {
   if (!clientRef.current) clientRef.current = new RpcClient();
   const client = clientRef.current;
 
-  const [state, dispatch] = useReducer(reducer, { blocks: [], streaming: false, queuedCount: 0 });
+  const [state, dispatch] = useReducer(reducer, { blocks: [], streaming: false });
+  const [queue, setQueueState] = useState<QueueItem[]>([]);
+  const queueRef = useRef<QueueItem[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [initializing, setInitializing] = useState(true);
   const [model, setModel] = useState<Model | null>(null);
@@ -249,6 +246,15 @@ export function useSession() {
   const attachGen = useRef(0);
   const handleAgentEndRef = useRef<() => void>(() => {});
   const onAttachedRef = useRef<() => Promise<void>>(async () => {});
+  const sendPromptNowRef = useRef<(text: string, attachments?: Attachment[], opts?: { streamingBehavior?: "steer" }) => void>(() => {});
+
+  const setQueue = useCallback((updater: QueueItem[] | ((prev: QueueItem[]) => QueueItem[])) => {
+    setQueueState((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      queueRef.current = next;
+      return next;
+    });
+  }, []);
 
   const refreshStats = useCallback(async () => {
     const res = await client.request<SessionStats>({ type: "get_session_stats" });
@@ -260,21 +266,63 @@ export function useSession() {
     if (res.success && res.data?.messages) dispatch({ type: "load", messages: res.data.messages });
   }, [client]);
 
-  const handleAgentEnd = useCallback(() => {
-    void refreshStats();
-    void loadMessages();
-  }, [refreshStats, loadMessages]);
+  const sendPromptNow = useCallback(
+    (text: string, attachments?: Attachment[], opts?: { streamingBehavior?: "steer" }) => {
+      const images: ImageContent[] = (attachments ?? [])
+        .filter((a) => a.kind === "image")
+        .map((a) => ({ type: "image", data: a.data, mimeType: a.mimeType }));
 
-  handleAgentEndRef.current = handleAgentEnd;
+      const textPrefix = (attachments ?? [])
+        .filter((a) => a.kind === "text")
+        .map((a) => `**${a.name}**\n\`\`\`\n${a.data}\n\`\`\`\n`)
+        .join("\n");
+
+      const message = textPrefix ? `${textPrefix}\n${text}` : text;
+      const imageUrls = images.map((img) => `data:${img.mimeType};base64,${img.data}`);
+
+      dispatch({
+        type: "user",
+        text,
+        imageUrls: imageUrls.length ? imageUrls : undefined,
+      });
+
+      client.send({
+        type: "prompt",
+        message,
+        ...(images.length ? { images } : {}),
+        ...(opts?.streamingBehavior ? { streamingBehavior: opts.streamingBehavior } : {}),
+      });
+    },
+    [client],
+  );
+
+  sendPromptNowRef.current = sendPromptNow;
+
+  const flushQueue = useCallback(() => {
+    const q = queueRef.current;
+    if (q.length === 0) return;
+    const [first, ...rest] = q;
+    setQueue(rest);
+    sendPromptNowRef.current(first.text, first.attachments);
+  }, [setQueue]);
+
+  const handleAgentEnd = useCallback(async () => {
+    await Promise.all([refreshStats(), loadMessages()]);
+    flushQueue();
+  }, [refreshStats, loadMessages, flushQueue]);
+
+  handleAgentEndRef.current = () => {
+    void handleAgentEnd();
+  };
 
   const flushEvents = useCallback(
     (events: Event[]) => {
       for (const event of events) {
         dispatch({ type: "event", event });
-        if (event.type === "agent_end") handleAgentEnd();
+        if (event.type === "agent_end") handleAgentEndRef.current();
       }
     },
-    [handleAgentEnd],
+    [],
   );
 
   useEffect(() => {
@@ -309,8 +357,6 @@ export function useSession() {
       setModel(res.data.model);
       setThinkingLevel(res.data.thinkingLevel);
       setSessionName(res.data.sessionName);
-      // The plan-mode extension marks the session name with [plan] while on;
-      // derive from it so reattaching/reloading restores the toggle.
       setPlanMode(planModeFromName(res.data.sessionName));
       setInitializing(false);
       if (res.data.isStreaming) dispatch({ type: "event", event: { type: "agent_start" } });
@@ -348,56 +394,64 @@ export function useSession() {
       applyPersona(storedPersona()),
     ]);
     if (gen !== attachGen.current) return;
-    const queued = buffer.current;
+    const buffered = buffer.current;
     buffer.current = [];
     loading.current = false;
-    flushEvents(queued);
+    flushEvents(buffered);
   }, [flushEvents, loadMessages, refreshState, refreshStats, applyPersona]);
 
   onAttachedRef.current = onAttached;
 
-  const sendPromptNow = useCallback(
-    (text: string, attachments?: Attachment[], opts?: { streamingBehavior?: "steer" | "followUp" }) => {
-      const images: ImageContent[] = (attachments ?? [])
-        .filter((a) => a.kind === "image")
-        .map((a) => ({ type: "image", data: a.data, mimeType: a.mimeType }));
+  const enqueue = useCallback(
+    (text: string, attachments?: Attachment[]) => {
+      setQueue((prev) => [...prev, { id: nextQueueId(), text, attachments }]);
+    },
+    [setQueue],
+  );
 
-      const textPrefix = (attachments ?? [])
-        .filter((a) => a.kind === "text")
-        .map((a) => `**${a.name}**\n\`\`\`\n${a.data}\n\`\`\`\n`)
-        .join("\n");
+  const removeQueued = useCallback(
+    (id: string) => {
+      setQueue((prev) => prev.filter((item) => item.id !== id));
+    },
+    [setQueue],
+  );
 
-      const message = textPrefix ? `${textPrefix}\n${text}` : text;
-      const imageUrls = images.map((img) => `data:${img.mimeType};base64,${img.data}`);
+  const editQueued = useCallback(
+    (id: string, text: string) => {
+      setQueue((prev) => prev.map((item) => (item.id === id ? { ...item, text } : item)));
+    },
+    [setQueue],
+  );
 
-      dispatch({
-        type: "user",
-        text,
-        imageUrls: imageUrls.length ? imageUrls : undefined,
-        queued: opts?.streamingBehavior === "followUp",
-      });
-
-      // Plan mode is a server-side read-only toggle (the extension blocks
-      // edit/write and injects a planning prompt), so prompts flow normally.
-      client.send({
-        type: "prompt",
-        message,
-        ...(images.length ? { images } : {}),
-        ...(opts?.streamingBehavior ? { streamingBehavior: opts.streamingBehavior } : {}),
+  const reorderQueued = useCallback(
+    (from: number, to: number) => {
+      setQueue((prev) => {
+        if (from < 0 || from >= prev.length || to < 0 || to >= prev.length || from === to) return prev;
+        const next = prev.slice();
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        return next;
       });
     },
-    [client],
+    [setQueue],
   );
 
   const sendPrompt = useCallback(
     (text: string, attachments?: Attachment[]) => {
       if (state.streaming) {
-        sendPromptNow(text, undefined, { streamingBehavior: "followUp" });
+        enqueue(text, attachments);
       } else {
         sendPromptNow(text, attachments);
       }
     },
-    [state.streaming, sendPromptNow],
+    [state.streaming, sendPromptNow, enqueue],
+  );
+
+  const sendImmediate = useCallback(
+    (text: string, attachments?: Attachment[]) => {
+      sendPromptNow(text, attachments, { streamingBehavior: "steer" });
+    },
+    [sendPromptNow],
   );
 
   const togglePlanMode = useCallback(async () => {
@@ -411,6 +465,7 @@ export function useSession() {
 
   const resetForSession = useCallback(() => {
     dispatch({ type: "reset" });
+    setQueue([]);
     setModel(null);
     setThinkingLevel("medium");
     setSessionName(undefined);
@@ -418,7 +473,7 @@ export function useSession() {
     setAskMode(false);
     setPlanMode("off");
     setInitializing(true);
-  }, []);
+  }, [setQueue]);
 
   const newSession = useCallback(async () => {
     resetForSession();
@@ -486,8 +541,8 @@ export function useSession() {
   );
 
   const activity = useMemo(
-    () => deriveActivity(state.streaming, status, state.blocks, state.queuedCount),
-    [state.streaming, status, state.blocks, state.queuedCount],
+    () => deriveActivity(state.streaming, status, state.blocks, queue.length),
+    [state.streaming, status, state.blocks, queue.length],
   );
 
   return {
@@ -495,7 +550,7 @@ export function useSession() {
     blocks: state.blocks,
     streaming: state.streaming,
     activity,
-    queuedCount: state.queuedCount,
+    queue,
     status,
     initializing,
     model,
@@ -503,6 +558,10 @@ export function useSession() {
     stats,
     sessionName,
     sendPrompt,
+    sendImmediate,
+    removeQueued,
+    editQueued,
+    reorderQueued,
     abort,
     newSession,
     switchSession,

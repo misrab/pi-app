@@ -255,10 +255,9 @@ export function Transcript({ blocks, streaming, initializing }: Props) {
 
 function BlockView({ block, active }: { block: Block; active?: boolean }) {
   switch (block.kind) {
-    case "user": {
-      const cls = [styles.bubble, styles.user, block.queued ? styles.userQueued : ""].filter(Boolean).join(" ");
+    case "user":
       return (
-        <div className={cls} role="article" aria-label="You">
+        <div className={`${styles.bubble} ${styles.user}`} role="article" aria-label="You">
           {block.imageUrls && block.imageUrls.length > 0 && (
             <div className={styles.userImages}>
               {block.imageUrls.map((url, i) => (
@@ -267,14 +266,8 @@ function BlockView({ block, active }: { block: Block; active?: boolean }) {
             </div>
           )}
           {block.text && <span>{block.text}</span>}
-          {block.queued && (
-            <span className={styles.queuedBadge} title={t("queuedBadge")}>
-              <QueuedIcon /> {t("queuedBadge")}
-            </span>
-          )}
         </div>
       );
-    }
     case "text":
       return (
         <div className={styles.assistantRow} role="article" aria-label="pi">
@@ -319,14 +312,5 @@ function ToolView({ block }: { block: Extract<Block, { kind: "tool" }> }) {
         </pre>
       )}
     </div>
-  );
-}
-
-function QueuedIcon() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
   );
 }

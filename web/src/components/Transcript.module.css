@@ -421,22 +421,6 @@
   height: auto;
 }
 
-/* ── Queued message state ─────────────────────────────────────────────────── */
-.userQueued {
-  opacity: 0.65;
-}
-
-.queuedBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.7rem;
-  color: var(--muted);
-  font-style: italic;
-  letter-spacing: 0.02em;
-  margin-top: 2px;
-}
-
 /* ── Jump-to-latest button ────────────────────────────────────────────────── */
 .jumpBtn {
   position: absolute;
