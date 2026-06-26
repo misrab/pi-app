@@ -158,22 +158,6 @@
   opacity: 0.5;
 }
 
-.stop {
-  flex: 0 0 auto;
-  width: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  color: var(--muted);
-  border-left: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-}
-
-.stop:hover:not(:disabled) {
-  color: #e5484d;
-  background: var(--panel-2);
-}
-
 .name {
   font-size: 0.92rem;
   font-weight: 500;

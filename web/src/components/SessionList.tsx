@@ -21,7 +21,7 @@ export function SessionList({
   onNavigate,
   variant = "default",
 }: Props) {
-  const { sessionName, stats, sessionId, newSession, switchSession, stopSession, renameSession } = session;
+  const { sessionName, stats, sessionId, newSession, switchSession, renameSession } = session;
   const [list, setList] = useState<SessionInfo[] | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -65,14 +65,6 @@ export function SessionList({
     await switchSession(id);
     setBusy(false);
     onNavigate?.();
-  };
-
-  const stop = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    setBusy(true);
-    await stopSession(id);
-    await refresh();
-    setBusy(false);
   };
 
   const handleRename = async (name: string) => {
@@ -119,17 +111,6 @@ export function SessionList({
                 )}
                 <span className={styles.time}>{relative(s.modified)}</span>
               </button>
-              {s.status === "running" && (
-                <button
-                  className={styles.stop}
-                  onClick={(e) => stop(e, s.id)}
-                  disabled={busy}
-                  aria-label="Stop session"
-                  title="Stop process"
-                >
-                  ■
-                </button>
-              )}
             </li>
           ))}
           {list !== null && list.length === 0 && (

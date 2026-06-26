@@ -446,10 +446,6 @@ export function useSession() {
     return () => window.removeEventListener("popstate", onPopState);
   }, [client, switchSession]);
 
-  const stopSession = useCallback(async (sessionPath: string) => {
-    await fetch(`/api/sessions/stop?id=${encodeURIComponent(sessionPath)}`, { method: "POST" });
-  }, []);
-
   const renameSession = useCallback(
     async (name: string) => {
       await client.request({ type: "set_session_name", name });
@@ -510,7 +506,6 @@ export function useSession() {
     abort,
     newSession,
     switchSession,
-    stopSession,
     renameSession,
     cycleThinking,
     getAvailableModels,
