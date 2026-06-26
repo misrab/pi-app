@@ -49,9 +49,7 @@ let uid = 0;
 const nextId = () => `b${++uid}`;
 
 function planModeFromName(name: string | undefined): PlanMode {
-  if (name?.endsWith("[impl]")) return "impl";
-  if (name?.endsWith("[plan]")) return "plan";
-  return "off";
+  return name?.includes("[plan]") ? "on" : "off";
 }
 
 function reducer(state: State, action: Action): State {
@@ -311,9 +309,8 @@ export function useSession() {
       setModel(res.data.model);
       setThinkingLevel(res.data.thinkingLevel);
       setSessionName(res.data.sessionName);
-      // The plan-mode extension reflects its phase in the session name suffix
-      // ([plan]/[impl]); derive from it so reattaching/reloading restores the
-      // toggle instead of silently resetting to off.
+      // The plan-mode extension marks the session name with [plan] while on;
+      // derive from it so reattaching/reloading restores the toggle.
       setPlanMode(planModeFromName(res.data.sessionName));
       setInitializing(false);
       if (res.data.isStreaming) dispatch({ type: "event", event: { type: "agent_start" } });
@@ -380,18 +377,16 @@ export function useSession() {
         queued: opts?.streamingBehavior === "followUp",
       });
 
-      if (planMode === "plan") {
-        client.send({ type: "run_command", name: "plan", args: message });
-      } else {
-        client.send({
-          type: "prompt",
-          message,
-          ...(images.length ? { images } : {}),
-          ...(opts?.streamingBehavior ? { streamingBehavior: opts.streamingBehavior } : {}),
-        });
-      }
+      // Plan mode is a server-side read-only toggle (the extension blocks
+      // edit/write and injects a planning prompt), so prompts flow normally.
+      client.send({
+        type: "prompt",
+        message,
+        ...(images.length ? { images } : {}),
+        ...(opts?.streamingBehavior ? { streamingBehavior: opts.streamingBehavior } : {}),
+      });
     },
-    [client, planMode],
+    [client],
   );
 
   const sendPrompt = useCallback(
@@ -405,18 +400,10 @@ export function useSession() {
     [state.streaming, sendPromptNow],
   );
 
-  const cyclePlanMode = useCallback(async () => {
-    if (planMode === "off") {
-      setPlanMode("plan");
-    } else if (planMode === "plan") {
-      dispatch({ type: "user", text: "[implementing plan…]" });
-      await client.request({ type: "run_command", name: "implement", args: "" });
-      setPlanMode("impl");
-    } else {
-      await client.request({ type: "run_command", name: "done", args: "" });
-      setPlanMode("off");
-    }
-  }, [client, planMode]);
+  const togglePlanMode = useCallback(async () => {
+    await client.request({ type: "run_command", name: "plan", args: "" });
+    setPlanMode((prev) => (prev === "off" ? "on" : "off"));
+  }, [client]);
 
   const abort = useCallback(() => {
     client.send({ type: "abort" });
@@ -532,7 +519,7 @@ export function useSession() {
     askMode,
     toggleAskMode,
     planMode,
-    cyclePlanMode,
+    togglePlanMode,
     persona,
     setPersona,
   };

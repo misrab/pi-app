@@ -15,7 +15,7 @@ interface Props {
   onOpenPersona: () => void;
   onCycleThinking: () => void;
   onToggleAskMode: () => void;
-  onCyclePlanMode: () => void;
+  onTogglePlanMode: () => void;
 }
 
 export function Toolbar({
@@ -29,7 +29,7 @@ export function Toolbar({
   onOpenPersona,
   onCycleThinking,
   onToggleAskMode,
-  onCyclePlanMode,
+  onTogglePlanMode,
 }: Props) {
   return (
     <div className={styles.toolbar}>
@@ -72,11 +72,11 @@ export function Toolbar({
           {askMode ? t("askMode") : t("writeMode")}
         </button>
         <button
-          className={`${styles.pill} ${planMode !== "off" ? styles.planActive : ""}`}
-          onClick={onCyclePlanMode}
-          title={planMode === "off" ? t("planEnter") : planMode === "plan" ? t("planToImplement") : t("planToFinish")}
+          className={`${styles.pill} ${planMode === "on" ? styles.planActive : ""}`}
+          onClick={onTogglePlanMode}
+          title={planMode === "on" ? t("planExit") : t("planEnter")}
         >
-          {planMode === "off" ? t("planOff") : planMode === "plan" ? t("planPlanning") : t("planImplementing")}
+          {planMode === "on" ? t("planModeActive") : t("planMode")}
         </button>
       </div>
     </div>

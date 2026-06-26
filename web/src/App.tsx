@@ -57,7 +57,7 @@ export function App() {
             onOpenPersona={() => setSheet("persona")}
             onCycleThinking={session.cycleThinking}
             onToggleAskMode={session.toggleAskMode}
-            onCyclePlanMode={session.cyclePlanMode}
+            onTogglePlanMode={session.togglePlanMode}
           />
 
           <Composer
