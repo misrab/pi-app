@@ -17,12 +17,22 @@ const strings = {
   planExit: "Exit plan mode — back to write",
   thinkingOff: "think",
   thinkingCycle: "Cycle thinking level",
+  sessionsTitle: "Sessions",
+  sessionsNew: "New session",
+  sessionsRename: "Rename",
+  sessionsRenameCurrent: "Rename current",
+  sessionsResume: "Resume",
+  sessionsSearchPlaceholder: "Search sessions…",
+  sessionsShowMore: "Show more",
+  sessionsNoMatches: "No matching sessions.",
+  sessionsEmpty: "No saved sessions yet.",
 } as const;
 
 type StringKey = keyof typeof strings;
+type FnKey = "activityQueued";
 
-export function t(key: "activityQueued", n: number): string;
-export function t(key: Exclude<StringKey, "activityQueued">): string;
+export function t(key: FnKey, n: number): string;
+export function t(key: Exclude<StringKey, FnKey>): string;
 export function t(key: StringKey, arg?: number): string {
   const v = strings[key];
   if (typeof v === "function") return v(arg ?? 0);

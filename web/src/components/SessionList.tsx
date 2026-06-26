@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { fmtCost, fmtPercent, fmtTokens } from "../lib/fmt";
+import { t } from "../lib/i18n";
 import type { SessionInfo, SessionStats } from "../api/types";
 import type { Session } from "../hooks/useSession";
 import { RenameDialog } from "./RenameDialog";
 import { Skeleton } from "./Skeleton";
 import styles from "./SessionList.module.css";
 
-const POLL_MS = 2000;
+const POLL_MS = 10_000;
+const PAGE = 20;
 
 interface Props {
   session: Session;
@@ -23,6 +25,8 @@ export function SessionList({
 }: Props) {
   const { sessionName, stats, sessionId, newSession, switchSession, renameSession } = session;
   const [list, setList] = useState<SessionInfo[] | null>(null);
+  const [query, setQuery] = useState("");
+  const [shown, setShown] = useState(PAGE);
   const [renaming, setRenaming] = useState(false);
   const [busy, setBusy] = useState(false);
   const pollRef = useRef<number | null>(null);
@@ -36,6 +40,10 @@ export function SessionList({
   };
 
   useEffect(() => {
+    setShown(PAGE);
+  }, [query]);
+
+  useEffect(() => {
     if (!active) {
       if (pollRef.current !== null) {
         clearInterval(pollRef.current);
@@ -45,13 +53,35 @@ export function SessionList({
     }
     void refresh(true);
     pollRef.current = window.setInterval(() => void refresh(), POLL_MS);
+
+    const onFocus = () => void refresh();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
       if (pollRef.current !== null) {
         clearInterval(pollRef.current);
         pollRef.current = null;
       }
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [active]);
+
+  const filtered = useMemo(() => {
+    if (!list) return null;
+    const q = query.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(
+      (s) => s.name.toLowerCase().includes(q) || s.preview.toLowerCase().includes(q),
+    );
+  }, [list, query]);
+
+  const visible = filtered?.slice(0, shown) ?? null;
+  const hasMore = filtered !== null && filtered.length > shown;
 
   const start = async () => {
     setBusy(true);
@@ -72,22 +102,36 @@ export function SessionList({
     await refresh();
   };
 
+  const renameLabel = sessionName
+    ? `${t("sessionsRename")} "${sessionName}"`
+    : t("sessionsRenameCurrent");
+
   return (
     <>
       <div className={`${styles.root} ${variant === "sidebar" ? styles.sidebar : ""}`}>
-        {variant === "sidebar" && <h2 className={styles.title}>Sessions</h2>}
+        {variant === "sidebar" && <h2 className={styles.title}>{t("sessionsTitle")}</h2>}
         {stats && <Stats stats={stats} />}
 
         <div className={styles.actions}>
           <button className={styles.primary} onClick={start} disabled={busy}>
-            ＋ New session
+            ＋ {t("sessionsNew")}
           </button>
           <button className={styles.secondary} onClick={() => setRenaming(true)} disabled={busy}>
-            Rename {sessionName ? `"${sessionName}"` : "current"}
+            {renameLabel}
           </button>
         </div>
 
-        <div className={styles.listLabel}>Resume</div>
+        <div className={styles.listLabel}>{t("sessionsResume")}</div>
+        <div className={styles.search}>
+          <input
+            className={styles.searchInput}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("sessionsSearchPlaceholder")}
+            aria-label={t("sessionsSearchPlaceholder")}
+          />
+        </div>
         <ul className={styles.list}>
           {list === null && [1, 2, 3].map((i) => (
             <li key={i} className={styles.skeletonRow}>
@@ -95,7 +139,7 @@ export function SessionList({
               <Skeleton width="85%" height="0.75em" />
             </li>
           ))}
-          {list !== null && list.map((s) => (
+          {visible?.map((s) => (
             <li key={s.id} className={styles.row}>
               <button
                 className={`${styles.item} ${s.id === sessionId ? styles.active : ""}`}
@@ -113,8 +157,22 @@ export function SessionList({
               </button>
             </li>
           ))}
+          {hasMore && (
+            <li>
+              <button
+                className={styles.showMore}
+                onClick={() => setShown((n) => n + PAGE)}
+                disabled={busy}
+              >
+                {t("sessionsShowMore")}
+              </button>
+            </li>
+          )}
+          {filtered !== null && filtered.length === 0 && query.trim() && (
+            <li className={styles.noMatches}>{t("sessionsNoMatches")}</li>
+          )}
           {list !== null && list.length === 0 && (
-            <li className={styles.empty}>No saved sessions yet.</li>
+            <li className={styles.empty}>{t("sessionsEmpty")}</li>
           )}
         </ul>
       </div>
