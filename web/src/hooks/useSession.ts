@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { RpcClient, sessionIdFromPath, type ConnectionStatus } from "../api/rpc";
 import type { Attachment, Event, ImageContent, Model, PlanMode, SessionStats, StoredMessage, ThinkingLevel } from "../api/types";
 
@@ -12,8 +12,6 @@ function storedPersona(): string {
     return DEFAULT_PERSONA;
   }
 }
-
-export type ActivityState = "idle" | "thinking" | "tool" | "working" | "queued" | "reconnecting" | "connecting";
 
 export type QueueItem = {
   id: string;
@@ -210,16 +208,6 @@ function contentImages(content: unknown): string[] {
   return (content as { type: string; data?: string; mimeType?: string }[])
     .filter((c) => c.type === "image" && c.data)
     .map((c) => `data:${c.mimeType ?? "image/png"};base64,${c.data}`);
-}
-
-function deriveActivity(streaming: boolean, status: ConnectionStatus, blocks: Block[], queueLen: number): ActivityState {
-  if (status === "connecting") return "connecting";
-  if (status === "closed") return "reconnecting";
-  if (!streaming) return queueLen > 0 ? "queued" : "idle";
-  const last = blocks[blocks.length - 1];
-  if (last?.kind === "thinking") return "thinking";
-  if (last?.kind === "tool" && !last.done) return "tool";
-  return "working";
 }
 
 export function useSession() {
@@ -460,8 +448,13 @@ export function useSession() {
   }, [client]);
 
   const abort = useCallback(() => {
+    // Stop means stop: drop pending queue so the agent_end from this abort
+    // doesn't flush the next item and re-trigger a run. Clear the ref
+    // synchronously too, since agent_end may arrive before React commits.
+    queueRef.current = [];
+    setQueue([]);
     client.send({ type: "abort" });
-  }, [client]);
+  }, [client, setQueue]);
 
   const resetForSession = useCallback(() => {
     dispatch({ type: "reset" });
@@ -540,16 +533,10 @@ export function useSession() {
     [client, refreshState],
   );
 
-  const activity = useMemo(
-    () => deriveActivity(state.streaming, status, state.blocks, queue.length),
-    [state.streaming, status, state.blocks, queue.length],
-  );
-
   return {
     sessionId,
     blocks: state.blocks,
     streaming: state.streaming,
-    activity,
     queue,
     status,
     initializing,

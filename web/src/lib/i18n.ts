@@ -2,13 +2,10 @@
 const strings = {
   activityThinking: "Thinking…",
   activityTool: "Running tool…",
-  activityWorking: "Working…",
   activityReconnecting: "Reconnecting…",
   activityConnecting: "Connecting…",
-  activityReady: "Ready",
   queueCountLabel: (n: number) => (n === 1 ? "1 queued" : `${n} queued`),
   queueSend: "Send",
-  queueSendImmediate: "Send now",
   queueRemove: "Remove",
   queueEdit: "Edit",
   queueDragHandle: "Drag to reorder",
