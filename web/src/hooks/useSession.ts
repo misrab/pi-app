@@ -232,6 +232,10 @@ export function useSession() {
   const loading = useRef(false);
   const buffer = useRef<Event[]>([]);
   const attachGen = useRef(0);
+  // Set when the user hits stop. The server emits the same agent_end for an
+  // abort as for a natural finish, so this flag lets us tell them apart and
+  // skip advancing the queue on a manual stop.
+  const stoppedRef = useRef(false);
   const handleAgentEndRef = useRef<() => void>(() => {});
   const onAttachedRef = useRef<() => Promise<void>>(async () => {});
   const sendPromptNowRef = useRef<(text: string, attachments?: Attachment[], opts?: { streamingBehavior?: "steer" }) => void>(() => {});
@@ -296,6 +300,12 @@ export function useSession() {
 
   const handleAgentEnd = useCallback(async () => {
     await Promise.all([refreshStats(), loadMessages()]);
+    // A manual stop ends the run but leaves the queue paused as-is; only a
+    // natural completion advances to the next queued message.
+    if (stoppedRef.current) {
+      stoppedRef.current = false;
+      return;
+    }
     flushQueue();
   }, [refreshStats, loadMessages, flushQueue]);
 
@@ -306,6 +316,7 @@ export function useSession() {
   const flushEvents = useCallback(
     (events: Event[]) => {
       for (const event of events) {
+        if (event.type === "agent_start") stoppedRef.current = false;
         dispatch({ type: "event", event });
         if (event.type === "agent_end") handleAgentEndRef.current();
       }
@@ -319,6 +330,7 @@ export function useSession() {
         buffer.current.push(event);
         return;
       }
+      if (event.type === "agent_start") stoppedRef.current = false;
       dispatch({ type: "event", event });
       if (event.type === "agent_end") handleAgentEndRef.current();
     });
@@ -448,13 +460,11 @@ export function useSession() {
   }, [client]);
 
   const abort = useCallback(() => {
-    // Stop means stop: drop pending queue so the agent_end from this abort
-    // doesn't flush the next item and re-trigger a run. Clear the ref
-    // synchronously too, since agent_end may arrive before React commits.
-    queueRef.current = [];
-    setQueue([]);
+    // Stop only halts the current run; the queue stays as-is. The flag makes
+    // the resulting agent_end skip the queue flush (handled in handleAgentEnd).
+    stoppedRef.current = true;
     client.send({ type: "abort" });
-  }, [client, setQueue]);
+  }, [client]);
 
   const resetForSession = useCallback(() => {
     dispatch({ type: "reset" });
