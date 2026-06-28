@@ -2,6 +2,8 @@
 const strings = {
   activityThinking: "Thinking…",
   activityTool: "Running tool…",
+  activityToolElapsed: (secs: number) => `${secs}s`,
+  activityWorking: "Agent working…",
   activityReconnecting: "Reconnecting…",
   activityConnecting: "Connecting…",
   queueCountLabel: (n: number) => (n === 1 ? "1 queued" : `${n} queued`),
@@ -29,15 +31,17 @@ const strings = {
   sessionsShowMore: "Show more",
   sessionsNoMatches: "No matching sessions.",
   sessionsEmpty: "No saved sessions yet.",
+  sessionsRunning: "Running",
+  sessionsStop: "Stop",
 } as const;
 
 type StringKey = keyof typeof strings;
-type FnKey = "queueCountLabel";
+type FnKey = "queueCountLabel" | "activityToolElapsed";
 
 export function t(key: FnKey, n: number): string;
 export function t(key: Exclude<StringKey, FnKey>): string;
 export function t(key: StringKey, arg?: number): string {
   const v = strings[key];
-  if (typeof v === "function") return v(arg ?? 0);
+  if (typeof v === "function") return (v as (n: number) => string)(arg ?? 0);
   return v;
 }

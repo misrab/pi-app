@@ -65,6 +65,12 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
     res.writeHead(ok ? 204 : 404).end();
     return;
   }
+  if (url.pathname === "/api/sessions/abort" && req.method === "POST") {
+    const id = url.searchParams.get("id") ?? "";
+    const ok = await manager.abort(id);
+    res.writeHead(ok ? 204 : 404).end();
+    return;
+  }
   if (url.pathname === "/api/settings" && req.method === "GET") {
     return json(res, readEnabledModels(agentDir));
   }

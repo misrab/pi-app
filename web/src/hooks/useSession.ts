@@ -47,6 +47,11 @@ type Action =
   | { type: "load"; messages: StoredMessage[] }
   | { type: "reset" };
 
+/** Apply replay/history without clobbering in-flight turn state. */
+function mergeLoadedMessages(state: State, messages: StoredMessage[]): State {
+  return { blocks: messagesToBlocks(messages), streaming: state.streaming };
+}
+
 let uid = 0;
 let queueUid = 0;
 const nextId = () => `b${++uid}`;
@@ -68,7 +73,7 @@ function reducer(state: State, action: Action): State {
       };
 
     case "load":
-      return { blocks: messagesToBlocks(action.messages), streaming: false };
+      return mergeLoadedMessages(state, action.messages);
 
     case "event":
       return handleEvent(state, action.event);
@@ -313,6 +318,11 @@ export function useSession() {
     void handleAgentEnd();
   };
 
+  const beginAttach = useCallback(() => {
+    loading.current = true;
+    buffer.current = [];
+  }, []);
+
   const flushEvents = useCallback(
     (events: Event[]) => {
       for (const event of events) {
@@ -336,7 +346,10 @@ export function useSession() {
     });
     const offStatus = client.onStatus((s) => {
       setStatus(s);
-      if (s === "open") void onAttachedRef.current();
+      if (s === "open") {
+        beginAttach();
+        void onAttachedRef.current();
+      }
     });
     client.connect();
     return () => {
@@ -344,13 +357,12 @@ export function useSession() {
       offStatus();
       client.close();
     };
-  }, [client]);
+  }, [client, beginAttach]);
 
   const refreshState = useCallback(async () => {
     const res = await client.request<{
       model: Model | null;
       thinkingLevel: ThinkingLevel;
-      isStreaming?: boolean;
       sessionName?: string;
     }>({ type: "get_state" });
     if (res.success && res.data) {
@@ -359,7 +371,6 @@ export function useSession() {
       setSessionName(res.data.sessionName);
       setPlanMode(planModeFromName(res.data.sessionName));
       setInitializing(false);
-      if (res.data.isStreaming) dispatch({ type: "event", event: { type: "agent_start" } });
     }
   }, [client]);
 
@@ -385,20 +396,42 @@ export function useSession() {
 
   const onAttached = useCallback(async () => {
     const gen = ++attachGen.current;
-    loading.current = true;
-    buffer.current = [];
-    await Promise.all([
-      refreshState(),
-      refreshStats(),
-      loadMessages(),
-      applyPersona(storedPersona()),
-    ]);
+    beginAttach();
+
+    const stateRes = await client.request<{
+      model: Model | null;
+      thinkingLevel: ThinkingLevel;
+      isStreaming?: boolean;
+      sessionName?: string;
+    }>({ type: "get_state" });
     if (gen !== attachGen.current) return;
+
+    await Promise.all([refreshStats(), applyPersona(storedPersona())]);
+    if (gen !== attachGen.current) return;
+
+    const msgRes = await client.request<{ messages: StoredMessage[] }>({ type: "get_messages" });
+    if (gen !== attachGen.current) return;
+
+    if (stateRes.success && stateRes.data) {
+      setModel(stateRes.data.model);
+      setThinkingLevel(stateRes.data.thinkingLevel);
+      setSessionName(stateRes.data.sessionName);
+      setPlanMode(planModeFromName(stateRes.data.sessionName));
+      setInitializing(false);
+    }
+    if (msgRes.success && msgRes.data?.messages) {
+      dispatch({ type: "load", messages: msgRes.data.messages });
+    }
+
     const buffered = buffer.current;
     buffer.current = [];
     loading.current = false;
     flushEvents(buffered);
-  }, [flushEvents, loadMessages, refreshState, refreshStats, applyPersona]);
+
+    if (stateRes.success && stateRes.data?.isStreaming) {
+      dispatch({ type: "event", event: { type: "agent_start" } });
+    }
+  }, [beginAttach, flushEvents, applyPersona, refreshStats, client]);
 
   onAttachedRef.current = onAttached;
 
@@ -460,11 +493,20 @@ export function useSession() {
   }, [client]);
 
   const abort = useCallback(() => {
-    // Stop only halts the current run; the queue stays as-is. The flag makes
-    // the resulting agent_end skip the queue flush (handled in handleAgentEnd).
     stoppedRef.current = true;
     client.send({ type: "abort" });
   }, [client]);
+
+  const abortRemote = useCallback(
+    async (id: string) => {
+      if (id === client.session) {
+        abort();
+        return;
+      }
+      await fetch(`/api/sessions/abort?id=${encodeURIComponent(id)}`, { method: "POST" });
+    },
+    [client, abort],
+  );
 
   const resetForSession = useCallback(() => {
     dispatch({ type: "reset" });
@@ -488,10 +530,11 @@ export function useSession() {
     async (sessionPath: string, historyMode: "push" | "replace" | "none" = "push") => {
       if (sessionPath === client.session && historyMode === "none") return;
       resetForSession();
+      beginAttach();
       client.switchTo(sessionPath, historyMode);
       setSessionId(client.session);
     },
-    [client, resetForSession],
+    [client, resetForSession, beginAttach],
   );
 
   useEffect(() => {
@@ -560,6 +603,7 @@ export function useSession() {
     editQueued,
     reorderQueued,
     abort,
+    abortRemote,
     newSession,
     switchSession,
     renameSession,

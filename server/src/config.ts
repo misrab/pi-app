@@ -80,17 +80,24 @@ export async function installPackages(agentDir: string, piBin: string): Promise<
 /** Start a timer that re-pulls the repo and reinstalls packages on change. */
 export function startConfigPoll(o: ConfigOptions, intervalMs: number): void {
   if (!o.repo || intervalMs <= 0) return;
+  let syncing = false;
   setInterval(() => {
-    try {
-      const before = gitHead(o.dir);
-      sync(o.repo, o.dir, o.sshKey);
-      if (gitHead(o.dir) === before) return;
-      console.log("config updated, reinstalling packages");
-      const agentDir = o.subdir ? path.join(o.dir, o.subdir) : o.dir;
-      void installPackages(agentDir, o.piBin);
-    } catch (e) {
-      console.warn(`config re-pull failed: ${err(e)}`);
-    }
+    if (syncing) return;
+    syncing = true;
+    void (async () => {
+      try {
+        const before = gitHead(o.dir);
+        await syncAsync(o.repo, o.dir, o.sshKey);
+        if (gitHead(o.dir) === before) return;
+        console.log("config updated, reinstalling packages");
+        const agentDir = o.subdir ? path.join(o.dir, o.subdir) : o.dir;
+        await installPackages(agentDir, o.piBin);
+      } catch (e) {
+        console.warn(`config re-pull failed: ${err(e)}`);
+      } finally {
+        syncing = false;
+      }
+    })();
   }, intervalMs).unref();
 }
 
@@ -103,13 +110,9 @@ function overlayAuth(src: string, agentDir: string): void {
 }
 
 function sync(repo: string, dir: string, sshKey: string): void {
-  const env = { ...process.env };
-  if (sshKey) env.GIT_SSH_COMMAND = `ssh -i ${sshKey} -o StrictHostKeyChecking=no`;
-
+  const env = gitEnv(sshKey);
   if (fs.existsSync(path.join(dir, ".git"))) {
     console.log(`pulling config repo (${dir})`);
-    // Reset local modifications (e.g. settings.json touched by `pi install`)
-    // before pulling so --ff-only never fails on a dirty tree.
     git(env, "-C", dir, "checkout", "--", ".");
     git(env, "-C", dir, "pull", "--ff-only", "--quiet");
     git(env, "-C", dir, "submodule", "update", "--init", "--recursive", "--quiet");
@@ -118,6 +121,26 @@ function sync(repo: string, dir: string, sshKey: string): void {
   console.log(`cloning config repo ${repo} -> ${dir}`);
   fs.mkdirSync(path.dirname(dir), { recursive: true });
   git(env, "clone", "--quiet", "--recurse-submodules", repo, dir);
+}
+
+async function syncAsync(repo: string, dir: string, sshKey: string): Promise<void> {
+  const env = gitEnv(sshKey);
+  if (fs.existsSync(path.join(dir, ".git"))) {
+    console.log(`pulling config repo (${dir})`);
+    await gitAsync(env, "-C", dir, "checkout", "--", ".");
+    await gitAsync(env, "-C", dir, "pull", "--ff-only", "--quiet");
+    await gitAsync(env, "-C", dir, "submodule", "update", "--init", "--recursive", "--quiet");
+    return;
+  }
+  console.log(`cloning config repo ${repo} -> ${dir}`);
+  fs.mkdirSync(path.dirname(dir), { recursive: true });
+  await gitAsync(env, "clone", "--quiet", "--recurse-submodules", repo, dir);
+}
+
+function gitEnv(sshKey: string): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  if (sshKey) env.GIT_SSH_COMMAND = `ssh -i ${sshKey} -o StrictHostKeyChecking=no`;
+  return env;
 }
 
 function seedDir(src: string, dir: string): void {
@@ -138,6 +161,10 @@ function gitHead(dir: string): string {
 
 function git(env: NodeJS.ProcessEnv, ...args: string[]): void {
   execFileSync("git", args, { env, stdio: "pipe" });
+}
+
+async function gitAsync(env: NodeJS.ProcessEnv, ...args: string[]): Promise<void> {
+  await execFileAsync("git", args, { env });
 }
 
 function err(e: unknown): string {

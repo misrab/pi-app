@@ -125,6 +125,33 @@
 .row {
   display: flex;
   align-items: stretch;
+  gap: 4px;
+}
+
+.stopBtn {
+  flex-shrink: 0;
+  align-self: center;
+  margin-right: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--danger, #f87171);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.stopBtn:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.2);
+}
+
+.runningBadge {
+  margin-left: 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #36c26b;
+  vertical-align: middle;
 }
 
 .item {

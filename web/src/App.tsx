@@ -60,7 +60,7 @@ export function App() {
           <Composer
             sessionId={session.sessionId}
             streaming={session.streaming}
-            disabled={session.status !== "open" || session.initializing}
+            disabled={session.status !== "open" || (session.initializing && !session.streaming)}
             queue={session.queue}
             onSend={session.sendPrompt}
             onSendImmediate={session.sendImmediate}

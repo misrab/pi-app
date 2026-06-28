@@ -146,6 +146,10 @@
   font-size: 0.72rem;
 }
 
+.toolRunning {
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
 .toolArgs {
   white-space: pre-wrap;
   word-break: break-word;

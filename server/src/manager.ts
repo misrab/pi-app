@@ -158,6 +158,18 @@ export class Manager {
     return true;
   }
 
+  /** Abort the in-flight turn without disposing the session (for stop UX). */
+  async abort(id: string): Promise<boolean> {
+    const ms = this.sessions.get(id);
+    if (!ms) return false;
+    try {
+      await ms.session.abort();
+    } catch {
+      /* ignore */
+    }
+    return true;
+  }
+
   list(): { id: string; status: Status; attached: number }[] {
     return [...this.sessions.values()].map((ms) => ({
       id: ms.id,

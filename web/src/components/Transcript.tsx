@@ -236,7 +236,13 @@ export function Transcript({ blocks, streaming, initializing }: Props) {
         const last = blocks[blocks.length - 1]?.kind;
         return last !== "text" && last !== "thinking";
       })() && (
-        <div className={styles.spinner}>…</div>
+        <div className={styles.spinner} role="status">
+          {(() => {
+            const last = blocks[blocks.length - 1];
+            if (last?.kind === "tool" && !last.done) return t("activityWorking");
+            return "…";
+          })()}
+        </div>
       )}
       <div ref={endRef} />
     </div>
@@ -299,11 +305,27 @@ function BlockView({ block, active }: { block: Block; active?: boolean }) {
 
 
 function ToolView({ block }: { block: Extract<Block, { kind: "tool" }> }) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (block.done) return;
+    setElapsed(0);
+    const start = Date.now();
+    const timer = window.setInterval(() => {
+      setElapsed(Math.floor((Date.now() - start) / 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [block.done, block.toolId]);
+
   return (
-    <div className={`${styles.bubble} ${styles.tool}`}>
+    <div className={`${styles.bubble} ${styles.tool} ${!block.done ? styles.toolRunning : ""}`}>
       <div className={styles.toolHead}>
         <span className={styles.toolName}>{block.name}</span>
-        {!block.done && <span className={styles.toolPending}>{t("activityTool")}</span>}
+        {!block.done && (
+          <span className={styles.toolPending}>
+            {t("activityTool")}
+            {elapsed > 0 && ` · ${t("activityToolElapsed", elapsed)}`}
+          </span>
+        )}
       </div>
       <pre className={styles.toolArgs}>{JSON.stringify(block.args, null, 2)}</pre>
       {block.result !== undefined && (
