@@ -29,7 +29,7 @@ const cfg = {
   seed: env("PI_CONFIG_SEED"),
   dir: env("PI_CONFIG_DIR", "/data/pi-config"),
   subdir: env("PI_CONFIG_SUBDIR"),
-  sshKey: env("PI_SSH_KEY"),
+  githubToken: env("GITHUB_TOKEN"),
   authFile: env("PI_AUTH_FILE"),
   piBin: env("PI_BIN", "pi"),
 };

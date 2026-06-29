@@ -70,7 +70,7 @@ cd server && node dist/index.js
 | `PI_CONFIG_DIR` | `/data/pi-config` | the container's own config dir |
 | `PI_CONFIG_SUBDIR` | — | subdir holding the agent config (e.g. `agent`) |
 | `PI_AUTH_FILE` | — | `auth.json` to overlay into the config dir |
-| `PI_SSH_KEY` | — | GitHub-only deploy key for cloning `PI_CONFIG_REPO` (not cluster SSH) |
+| `GITHUB_TOKEN` | from `pi-app.env` | HTTPS clone of private `PI_CONFIG_REPO` |
 | `PI_BIN` | bundled SDK `pi` | pi binary used for `pi install` |
 | `PI_MAX_SESSIONS` | `100` | safety cap on concurrent live sessions |
 | `PI_IDLE_TTL_MS` | `1800000` | dispose detached + idle sessions after this |
