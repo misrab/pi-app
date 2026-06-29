@@ -143,9 +143,12 @@ function cacheControl(pathname: string): string {
 }
 
 function resolveWithinWebDir(pathname: string): string | null {
-  const rel = normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
-  const file = resolve(WEB_DIR, rel);
+  // Strip leading slashes so resolve() stays under WEB_DIR (resolve(WEB_DIR, "/") → "/").
+  const rel = normalize(decodeURIComponent(pathname))
+    .replace(/^(\.\.[/\\])+/, "")
+    .replace(/^[/\\]+/, "");
   const root = resolve(WEB_DIR);
+  const file = resolve(root, rel);
   if (file !== root && !file.startsWith(root + sep)) return null;
   return file;
 }
