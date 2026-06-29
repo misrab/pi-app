@@ -62,6 +62,7 @@ interface Props {
   onRemoveQueued: (id: string) => void;
   onEditQueued: (id: string, text: string) => void;
   onReorderQueued: (from: number, to: number) => void;
+  onFlushQueued: () => void;
   onAbort: () => void;
 }
 
@@ -75,6 +76,7 @@ export function Composer({
   onRemoveQueued,
   onEditQueued,
   onReorderQueued,
+  onFlushQueued,
   onAbort,
 }: Props) {
   const { text, setText, clearDraft } = useDraft(sessionId);
@@ -165,7 +167,10 @@ export function Composer({
   const submit = () => {
     if (speech.listening) speech.stop();
     const trimmed = text.trim();
-    if (!trimmed && !attachments.length) return;
+    if (!trimmed && !attachments.length) {
+      if (!streaming && queue.length > 0) onFlushQueued();
+      return;
+    }
     onSend(trimmed, attachments.length ? attachments : undefined);
     resetInput();
   };
@@ -196,7 +201,7 @@ export function Composer({
     setEditText("");
   };
 
-  const canSend = !disabled && (text.trim().length > 0 || attachments.length > 0);
+  const canSend = !disabled && (text.trim().length > 0 || attachments.length > 0 || (!streaming && queue.length > 0));
   const boxClass = [
     styles.inputBox,
     focused ? styles.focused : "",

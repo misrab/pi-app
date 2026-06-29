@@ -67,6 +67,7 @@ export function App() {
             onRemoveQueued={session.removeQueued}
             onEditQueued={session.editQueued}
             onReorderQueued={session.reorderQueued}
+            onFlushQueued={session.flushQueued}
             onAbort={session.abort}
           />
 

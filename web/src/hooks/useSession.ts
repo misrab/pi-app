@@ -237,10 +237,6 @@ export function useSession() {
   const loading = useRef(false);
   const buffer = useRef<Event[]>([]);
   const attachGen = useRef(0);
-  // Set when the user hits stop. The server emits the same agent_end for an
-  // abort as for a natural finish, so this flag lets us tell them apart and
-  // skip advancing the queue on a manual stop.
-  const stoppedRef = useRef(false);
   const handleAgentEndRef = useRef<() => void>(() => {});
   const onAttachedRef = useRef<() => Promise<void>>(async () => {});
   const sendPromptNowRef = useRef<(text: string, attachments?: Attachment[], opts?: { streamingBehavior?: "steer" }) => void>(() => {});
@@ -305,12 +301,6 @@ export function useSession() {
 
   const handleAgentEnd = useCallback(async () => {
     await Promise.all([refreshStats(), loadMessages()]);
-    // A manual stop ends the run but leaves the queue paused as-is; only a
-    // natural completion advances to the next queued message.
-    if (stoppedRef.current) {
-      stoppedRef.current = false;
-      return;
-    }
     flushQueue();
   }, [refreshStats, loadMessages, flushQueue]);
 
@@ -326,7 +316,6 @@ export function useSession() {
   const flushEvents = useCallback(
     (events: Event[]) => {
       for (const event of events) {
-        if (event.type === "agent_start") stoppedRef.current = false;
         dispatch({ type: "event", event });
         if (event.type === "agent_end") handleAgentEndRef.current();
       }
@@ -340,7 +329,6 @@ export function useSession() {
         buffer.current.push(event);
         return;
       }
-      if (event.type === "agent_start") stoppedRef.current = false;
       dispatch({ type: "event", event });
       if (event.type === "agent_end") handleAgentEndRef.current();
     });
@@ -493,7 +481,6 @@ export function useSession() {
   }, [client]);
 
   const abort = useCallback(() => {
-    stoppedRef.current = true;
     client.send({ type: "abort" });
   }, [client]);
 
@@ -602,6 +589,7 @@ export function useSession() {
     removeQueued,
     editQueued,
     reorderQueued,
+    flushQueued: flushQueue,
     abort,
     abortRemote,
     newSession,
