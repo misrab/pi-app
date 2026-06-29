@@ -23,12 +23,10 @@ COPY server/package*.json ./
 RUN npm ci --omit=dev
 
 # --- runtime -----------------------------------------------------------------
-# git + ssh: clone the private .pi config repo at startup.
-# curl + python3: baseline tools the agent (and skills) expect for HTTP/data
-# work — e.g. querying the quant API. Without these the agent fumbles through
-# fallbacks (busybox wget) and writes brittle commands.
+# git: HTTPS clone of private .pi config at startup.
+# curl + python3: baseline tools the agent expects for HTTP/data work.
 FROM node:22-alpine
-RUN apk add --no-cache git openssh-client curl python3
+RUN apk add --no-cache git curl python3
 WORKDIR /app/server
 
 COPY --from=proddeps /app/server/node_modules ./node_modules
