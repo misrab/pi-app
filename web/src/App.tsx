@@ -64,6 +64,7 @@ export function App() {
             queue={session.queue}
             onSend={session.sendPrompt}
             onSendImmediate={session.sendImmediate}
+            onSendQueuedNow={session.sendQueuedNow}
             onRemoveQueued={session.removeQueued}
             onEditQueued={session.editQueued}
             onReorderQueued={session.reorderQueued}

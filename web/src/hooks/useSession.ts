@@ -475,6 +475,22 @@ export function useSession() {
     [sendPromptNow],
   );
 
+  // Force-send a queued item now: pull it from the queue and steer it into the
+  // running turn (or send normally if idle).
+  const sendQueuedNow = useCallback(
+    (id: string) => {
+      const item = queueRef.current.find((q) => q.id === id);
+      if (!item) return;
+      setQueue((prev) => prev.filter((q) => q.id !== id));
+      if (state.streaming) {
+        sendPromptNow(item.text, item.attachments, { streamingBehavior: "steer" });
+      } else {
+        sendPromptNow(item.text, item.attachments);
+      }
+    },
+    [state.streaming, sendPromptNow, setQueue],
+  );
+
   const togglePlanMode = useCallback(async () => {
     await client.request({ type: "run_command", name: "plan", args: "" });
     setPlanMode((prev) => (prev === "off" ? "on" : "off"));
@@ -483,17 +499,6 @@ export function useSession() {
   const abort = useCallback(() => {
     client.send({ type: "abort" });
   }, [client]);
-
-  const abortRemote = useCallback(
-    async (id: string) => {
-      if (id === client.session) {
-        abort();
-        return;
-      }
-      await fetch(`/api/sessions/abort?id=${encodeURIComponent(id)}`, { method: "POST" });
-    },
-    [client, abort],
-  );
 
   const resetForSession = useCallback(() => {
     dispatch({ type: "reset" });
@@ -586,12 +591,12 @@ export function useSession() {
     sessionName,
     sendPrompt,
     sendImmediate,
+    sendQueuedNow,
     removeQueued,
     editQueued,
     reorderQueued,
     flushQueued: flushQueue,
     abort,
-    abortRemote,
     newSession,
     switchSession,
     renameSession,

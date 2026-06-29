@@ -28,7 +28,17 @@ function CodePre({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) {
   );
 }
 
-const markdownComponents = { pre: CodePre };
+// Plain anchor — Streamdown's default link wraps every URL in a broken
+// "open external link?" confirmation card. Just render a normal link.
+function Anchor({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+      {children}
+    </a>
+  );
+}
+
+const markdownComponents = { pre: CodePre, a: Anchor };
 
 // Streamdown renders model markdown safely: images, tables, links, code
 // (Shiki-highlighted), plus mermaid/math. parseIncompleteMarkdown keeps partial

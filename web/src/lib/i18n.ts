@@ -8,6 +8,7 @@ const strings = {
   activityConnecting: "Connecting…",
   queueCountLabel: (n: number) => (n === 1 ? "1 queued" : `${n} queued`),
   queueSend: "Send",
+  queueSendNow: "Send now",
   queueRemove: "Remove",
   queueEdit: "Edit",
   queueDragHandle: "Drag to reorder",
@@ -32,7 +33,6 @@ const strings = {
   sessionsNoMatches: "No matching sessions.",
   sessionsEmpty: "No saved sessions yet.",
   sessionsRunning: "Running",
-  sessionsStop: "Stop",
 } as const;
 
 type StringKey = keyof typeof strings;

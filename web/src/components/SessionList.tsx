@@ -23,7 +23,7 @@ export function SessionList({
   onNavigate,
   variant = "default",
 }: Props) {
-  const { sessionName, stats, sessionId, newSession, switchSession, renameSession, abortRemote } = session;
+  const { sessionName, stats, sessionId, newSession, switchSession, renameSession } = session;
   const [list, setList] = useState<SessionInfo[] | null>(null);
   const [query, setQuery] = useState("");
   const [shown, setShown] = useState(PAGE);
@@ -102,18 +102,6 @@ export function SessionList({
     await refresh();
   };
 
-  const stopRunning = async (id: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setBusy(true);
-    try {
-      await abortRemote(id);
-      await refresh();
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const renameLabel = sessionName
     ? `${t("sessionsRename")} "${sessionName}"`
     : t("sessionsRenameCurrent");
@@ -170,18 +158,6 @@ export function SessionList({
                 )}
                 <span className={styles.time}>{relative(s.modified)}</span>
               </button>
-              {s.status === "running" && (
-                <button
-                  type="button"
-                  className={styles.stopBtn}
-                  onClick={(e) => void stopRunning(s.id, e)}
-                  disabled={busy}
-                  aria-label={t("sessionsStop")}
-                  title={t("sessionsStop")}
-                >
-                  {t("sessionsStop")}
-                </button>
-              )}
             </li>
           ))}
           {hasMore && (

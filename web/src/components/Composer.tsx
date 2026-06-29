@@ -59,6 +59,7 @@ interface Props {
   queue: QueueItem[];
   onSend: (text: string, attachments?: Attachment[]) => void;
   onSendImmediate: (text: string, attachments?: Attachment[]) => void;
+  onSendQueuedNow: (id: string) => void;
   onRemoveQueued: (id: string) => void;
   onEditQueued: (id: string, text: string) => void;
   onReorderQueued: (from: number, to: number) => void;
@@ -73,6 +74,7 @@ export function Composer({
   queue,
   onSend,
   onSendImmediate,
+  onSendQueuedNow,
   onRemoveQueued,
   onEditQueued,
   onReorderQueued,
@@ -286,6 +288,15 @@ export function Composer({
                     )}
                   </button>
                 )}
+                <button
+                  type="button"
+                  className={styles.queueSendNow}
+                  onClick={() => onSendQueuedNow(item.id)}
+                  aria-label={t("queueSendNow")}
+                  title={t("queueSendNow")}
+                >
+                  <SendIcon />
+                </button>
                 <button
                   type="button"
                   className={styles.queueRemove}
