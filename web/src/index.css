@@ -12,7 +12,12 @@
   --error:    #f87171;
   --ok:       #34d399;
   --warning:  #f59e0b;
+  --on-accent: #ffffff;
   --border:   rgba(255, 255, 255, 0.08);
+  --code-inline-bg: rgba(255, 255, 255, 0.07);
+  --code-copy-bg: rgba(255, 255, 255, 0.1);
+  --table-header-bg: rgba(255, 255, 255, 0.04);
+  --shadow: rgba(0, 0, 0, 0.25);
 
   /* user bubble */
   --user-bg:    #122030;
@@ -40,7 +45,12 @@
   --error:    #dc2626;
   --ok:       #16a34a;
   --warning:  #d97706;
+  --on-accent: #ffffff;
   --border:   rgba(14, 37, 48, 0.12);
+  --code-inline-bg: rgba(14, 37, 48, 0.08);
+  --code-copy-bg: rgba(14, 37, 48, 0.1);
+  --table-header-bg: rgba(14, 37, 48, 0.06);
+  --shadow: rgba(14, 37, 48, 0.15);
 
   /* user bubble */
   --user-bg:    #c5e8f0;

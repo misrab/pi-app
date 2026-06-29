@@ -3,7 +3,7 @@
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import type { Manager, Status } from "./manager.js";
 
-export interface SessionListItem {
+interface SessionListItem {
   id: string;
   name: string;
   preview: string;

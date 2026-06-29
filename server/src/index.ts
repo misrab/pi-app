@@ -4,7 +4,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { mkdirSync, readFileSync, readdirSync } from "node:fs";
-import { extname, join, normalize } from "node:path";
+import { extname, join, normalize, resolve, sep } from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
 import { resolveConfig, installPackages, startConfigPoll } from "./config.js";
 import { Manager } from "./manager.js";
@@ -52,33 +52,26 @@ const manager = new Manager({
 const server = createServer((req, res) => void handleHttp(req, res));
 
 async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const url = new URL(req.url ?? "/", "http://localhost");
+  try {
+    const url = new URL(req.url ?? "/", "http://localhost");
 
-  if (url.pathname === "/health") return json(res, { healthy: true });
+    if (url.pathname === "/health") return json(res, { healthy: true });
 
-  if (url.pathname === "/api/sessions" && req.method === "GET") {
-    return json(res, await listSessions(CWD, manager));
-  }
-  if (url.pathname === "/api/sessions/stop" && req.method === "POST") {
-    const id = url.searchParams.get("id") ?? "";
-    const ok = await manager.stop(id);
-    res.writeHead(ok ? 204 : 404).end();
-    return;
-  }
-  if (url.pathname === "/api/sessions/abort" && req.method === "POST") {
-    const id = url.searchParams.get("id") ?? "";
-    const ok = await manager.abort(id);
-    res.writeHead(ok ? 204 : 404).end();
-    return;
-  }
-  if (url.pathname === "/api/settings" && req.method === "GET") {
-    return json(res, readEnabledModels(agentDir));
-  }
-  if (url.pathname === "/api/personas" && req.method === "GET") {
-    return json(res, readPersonas(agentDir));
-  }
+    if (url.pathname === "/api/sessions" && req.method === "GET") {
+      return json(res, await listSessions(CWD, manager));
+    }
+    if (url.pathname === "/api/settings" && req.method === "GET") {
+      return json(res, readEnabledModels(agentDir));
+    }
+    if (url.pathname === "/api/personas" && req.method === "GET") {
+      return json(res, readPersonas(agentDir));
+    }
 
-  return serveStatic(url.pathname, res);
+    return serveStatic(url.pathname, res);
+  } catch (e) {
+    console.error("HTTP error:", msg(e));
+    if (!res.headersSent) res.writeHead(500, { "content-type": "text/plain" }).end("internal error");
+  }
 }
 
 function json(res: ServerResponse, body: unknown): void {
@@ -149,10 +142,22 @@ function cacheControl(pathname: string): string {
     : "no-cache";
 }
 
+function resolveWithinWebDir(pathname: string): string | null {
+  const rel = normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
+  const file = resolve(WEB_DIR, rel);
+  const root = resolve(WEB_DIR);
+  if (file !== root && !file.startsWith(root + sep)) return null;
+  return file;
+}
+
 async function serveStatic(pathname: string, res: ServerResponse): Promise<void> {
   // Resolve within WEB_DIR; fall back to index.html for SPA routes.
-  const rel = normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
-  let file = join(WEB_DIR, rel);
+  const resolved = resolveWithinWebDir(pathname);
+  if (!resolved) {
+    res.writeHead(404).end("not found");
+    return;
+  }
+  let file = resolved;
   try {
     if ((await stat(file)).isDirectory()) file = join(file, "index.html");
     const body = await readFile(file);
@@ -238,12 +243,14 @@ wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
   };
 
   let unsubscribe = () => {};
+  let closed = false;
   ws.on("message", (data) => {
     const raw = data.toString();
     if (session) dispatch(raw);
     else queue.push(raw);
   });
   ws.on("close", () => {
+    closed = true;
     clearInterval(pingTimer);
     unsubscribe();
     manager.detach(id);
@@ -252,6 +259,10 @@ wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
   manager
     .attach(id)
     .then(({ ms, replay }) => {
+      if (closed) {
+        manager.detach(id);
+        return;
+      }
       session = ms.session;
       // Replay the in-flight turn so a reconnecting client sees live progress.
       // get_messages remains authoritative on agent_end (client reconciles then).

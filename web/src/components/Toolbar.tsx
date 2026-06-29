@@ -38,7 +38,7 @@ export function Toolbar({
             {initializing
               ? <Skeleton width="100px" height="1em" />
               : <>
-                  <span className={styles.modelName}>{model ? trimModelName(model.name) : "no model"}</span>
+                  <span className={styles.modelName}>{model ? trimModelName(model.name) : t("modelNone")}</span>
                   <ChevronDown />
                 </>
             }
@@ -67,7 +67,7 @@ export function Toolbar({
         <button
           className={`${styles.pill} ${askMode ? styles.askActive : ""}`}
           onClick={onToggleAskMode}
-          title={askMode ? "Ask mode (read-only) — click to disable" : "Enable ask mode (read-only)"}
+          title={t("askModeTooltip")}
         >
           {askMode ? t("askMode") : t("writeMode")}
         </button>

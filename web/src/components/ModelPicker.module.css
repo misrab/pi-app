@@ -17,7 +17,7 @@
 }
 
 .active {
-  background: #1a2138;
+  background: var(--panel-2);
 }
 
 .name {
@@ -71,6 +71,6 @@
 
 .levelActive {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 600;
 }

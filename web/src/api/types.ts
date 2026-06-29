@@ -14,47 +14,19 @@ export interface Model {
   maxTokens: number;
 }
 
-// ---- Messages -------------------------------------------------------------
-
-export interface TextContent {
-  type: "text";
-  text: string;
-}
-export interface ThinkingContent {
-  type: "thinking";
-  thinking: string;
-}
-export interface ToolCallContent {
-  type: "toolCall";
-  id: string;
-  name: string;
-  arguments: unknown;
-}
-
 // ---- Commands (client -> pi) ---------------------------------------------
 
 export type Command =
-  | { id?: string; type: "prompt"; message: string; images?: ImageContent[]; streamingBehavior?: "steer" | "followUp" }
-  | { id?: string; type: "steer"; message: string }
-  | { id?: string; type: "follow_up"; message: string }
+  | { id?: string; type: "prompt"; message: string; images?: ImageContent[]; streamingBehavior?: "steer" }
   | { id?: string; type: "abort" }
-  | { id?: string; type: "new_session" }
   | { id?: string; type: "get_state" }
   | { id?: string; type: "get_messages" }
   | { id?: string; type: "set_model"; provider: string; modelId: string }
-  | { id?: string; type: "cycle_model" }
   | { id?: string; type: "get_available_models" }
   | { id?: string; type: "set_thinking_level"; level: ThinkingLevel }
   | { id?: string; type: "cycle_thinking_level" }
-  | { id?: string; type: "compact"; customInstructions?: string }
-  | { id?: string; type: "set_auto_compaction"; enabled: boolean }
   | { id?: string; type: "get_session_stats" }
-  | { id?: string; type: "switch_session"; sessionPath: string }
-  | { id?: string; type: "fork"; entryId: string }
-  | { id?: string; type: "clone" }
-  | { id?: string; type: "get_fork_messages" }
   | { id?: string; type: "set_session_name"; name: string }
-  | { id?: string; type: "get_commands" }
   | { id?: string; type: "run_command"; name: string; args: string };
 
 export interface ImageContent {
@@ -89,6 +61,13 @@ export interface Response<T = unknown> {
 }
 
 // ---- Events (pi -> client, streamed) -------------------------------------
+
+export interface ToolCallContent {
+  type: "toolCall";
+  id: string;
+  name: string;
+  arguments: unknown;
+}
 
 export type AssistantDelta =
   | { type: "start" }

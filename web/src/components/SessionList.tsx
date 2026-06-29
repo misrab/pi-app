@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fmtCost, fmtPercent, fmtTokens } from "../lib/fmt";
-import { t } from "../lib/i18n";
+import { t, relativeTime, formatStatTokensTitle } from "../lib/i18n";
 import type { SessionInfo, SessionStats } from "../api/types";
 import type { Session } from "../hooks/useSession";
 import { RenameDialog } from "./RenameDialog";
@@ -156,7 +156,7 @@ export function SessionList({
                 {s.preview && s.preview !== s.name && (
                   <span className={styles.preview}>{s.preview}</span>
                 )}
-                <span className={styles.time}>{relative(s.modified)}</span>
+                <span className={styles.time}>{relativeTime(s.modified)}</span>
               </button>
             </li>
           ))}
@@ -195,19 +195,20 @@ function Stats({ stats }: { stats: SessionStats }) {
   const activeTokens = stats.tokens.input + stats.tokens.output;
   return (
     <div className={styles.stats}>
-      <Stat label="Cost" value={fmtCost(stats.cost)} />
+      <Stat label={t("statCost")} value={fmtCost(stats.cost)} />
       <Stat
-        label="Tokens"
+        label={t("statTokens")}
         value={fmtTokens(activeTokens)}
-        title={`Input: ${fmtTokens(stats.tokens.input)} · Output: ${fmtTokens(stats.tokens.output)} · Cache read: ${fmtTokens(stats.tokens.cacheRead)}`}
+        title={formatStatTokensTitle(fmtTokens(stats.tokens.input), fmtTokens(stats.tokens.output), fmtTokens(stats.tokens.cacheRead))}
       />
-      {ctx && ctx.percent != null && <Stat label="Context" value={fmtPercent(ctx.percent)} />}
+      {ctx && ctx.percent != null && <Stat label={t("statContext")} value={fmtPercent(ctx.percent)} />}
     </div>
   );
 }
 
 function StatusDot({ status }: { status: SessionInfo["status"] }) {
-  const title = status === "running" ? "running" : status === "idle" ? "idle" : "stopped";
+  const title =
+    status === "running" ? t("statusRunning") : status === "idle" ? t("statusIdle") : t("statusStopped");
   return <span className={`${styles.dot} ${styles[status]}`} title={title} aria-label={title} />;
 }
 
@@ -218,14 +219,4 @@ function Stat({ label, value, title }: { label: string; value: string; title?: s
       <div className={styles.statLabel}>{label}</div>
     </div>
   );
-}
-
-function relative(iso: string): string {
-  const d = new Date(iso).getTime();
-  const mins = Math.round((Date.now() - d) / 60000);
-  if (mins < 1) return "now";
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.round(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  return `${Math.round(hrs / 24)}d`;
 }

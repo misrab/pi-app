@@ -237,6 +237,7 @@ export function useSession() {
   const loading = useRef(false);
   const buffer = useRef<Event[]>([]);
   const attachGen = useRef(0);
+  const agentEndInFlight = useRef(false);
   const handleAgentEndRef = useRef<() => void>(() => {});
   const onAttachedRef = useRef<() => Promise<void>>(async () => {});
   const sendPromptNowRef = useRef<(text: string, attachments?: Attachment[], opts?: { streamingBehavior?: "steer" }) => void>(() => {});
@@ -300,8 +301,14 @@ export function useSession() {
   }, [setQueue]);
 
   const handleAgentEnd = useCallback(async () => {
-    await Promise.all([refreshStats(), loadMessages()]);
-    flushQueue();
+    if (agentEndInFlight.current) return;
+    agentEndInFlight.current = true;
+    try {
+      await Promise.all([refreshStats(), loadMessages()]);
+      flushQueue();
+    } finally {
+      agentEndInFlight.current = false;
+    }
   }, [refreshStats, loadMessages, flushQueue]);
 
   handleAgentEndRef.current = () => {
@@ -335,7 +342,6 @@ export function useSession() {
     const offStatus = client.onStatus((s) => {
       setStatus(s);
       if (s === "open") {
-        beginAttach();
         void onAttachedRef.current();
       }
     });
@@ -386,38 +392,41 @@ export function useSession() {
     const gen = ++attachGen.current;
     beginAttach();
 
-    const stateRes = await client.request<{
-      model: Model | null;
-      thinkingLevel: ThinkingLevel;
-      isStreaming?: boolean;
-      sessionName?: string;
-    }>({ type: "get_state" });
-    if (gen !== attachGen.current) return;
+    try {
+      const stateRes = await client.request<{
+        model: Model | null;
+        thinkingLevel: ThinkingLevel;
+        isStreaming?: boolean;
+        sessionName?: string;
+      }>({ type: "get_state" });
+      if (gen !== attachGen.current) return;
 
-    await Promise.all([refreshStats(), applyPersona(storedPersona())]);
-    if (gen !== attachGen.current) return;
+      await Promise.all([refreshStats(), applyPersona(storedPersona())]);
+      if (gen !== attachGen.current) return;
 
-    const msgRes = await client.request<{ messages: StoredMessage[] }>({ type: "get_messages" });
-    if (gen !== attachGen.current) return;
+      const msgRes = await client.request<{ messages: StoredMessage[] }>({ type: "get_messages" });
+      if (gen !== attachGen.current) return;
 
-    if (stateRes.success && stateRes.data) {
-      setModel(stateRes.data.model);
-      setThinkingLevel(stateRes.data.thinkingLevel);
-      setSessionName(stateRes.data.sessionName);
-      setPlanMode(planModeFromName(stateRes.data.sessionName));
-      setInitializing(false);
-    }
-    if (msgRes.success && msgRes.data?.messages) {
-      dispatch({ type: "load", messages: msgRes.data.messages });
-    }
+      if (stateRes.success && stateRes.data) {
+        setModel(stateRes.data.model);
+        setThinkingLevel(stateRes.data.thinkingLevel);
+        setSessionName(stateRes.data.sessionName);
+        setPlanMode(planModeFromName(stateRes.data.sessionName));
+      }
+      if (msgRes.success && msgRes.data?.messages) {
+        dispatch({ type: "load", messages: msgRes.data.messages });
+      }
 
-    const buffered = buffer.current;
-    buffer.current = [];
-    loading.current = false;
-    flushEvents(buffered);
+      const buffered = buffer.current;
+      buffer.current = [];
+      loading.current = false;
+      flushEvents(buffered);
 
-    if (stateRes.success && stateRes.data?.isStreaming) {
-      dispatch({ type: "event", event: { type: "agent_start" } });
+      if (stateRes.success && stateRes.data?.isStreaming) {
+        dispatch({ type: "event", event: { type: "agent_start" } });
+      }
+    } finally {
+      if (gen === attachGen.current) setInitializing(false);
     }
   }, [beginAttach, flushEvents, applyPersona, refreshStats, client]);
 
@@ -492,8 +501,8 @@ export function useSession() {
   );
 
   const togglePlanMode = useCallback(async () => {
-    await client.request({ type: "run_command", name: "plan", args: "" });
-    setPlanMode((prev) => (prev === "off" ? "on" : "off"));
+    const res = await client.request({ type: "run_command", name: "plan", args: "" });
+    if (res.success) setPlanMode((prev) => (prev === "off" ? "on" : "off"));
   }, [client]);
 
   const abort = useCallback(() => {
@@ -548,8 +557,8 @@ export function useSession() {
   );
 
   const toggleAskMode = useCallback(async () => {
-    await client.request({ type: "run_command", name: "ask", args: "" });
-    setAskMode((prev) => !prev);
+    const res = await client.request({ type: "run_command", name: "ask", args: "" });
+    if (res.success) setAskMode((prev) => !prev);
   }, [client]);
 
   const cycleThinking = useCallback(async () => {

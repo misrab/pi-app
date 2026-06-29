@@ -1,4 +1,5 @@
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useRef } from "react";
+import { useDialogA11y } from "../hooks/useDialogA11y";
 import styles from "./Modal.module.css";
 
 interface Props {
@@ -11,18 +12,21 @@ interface Props {
 
 /** A centered modal dialog with backdrop. */
 export function Modal({ open, title, onClose, children }: Props) {
-  useEffect(() => {
-    if (!open || !onClose) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const modalRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(modalRef, open, onClose);
 
   if (!open) return null;
 
   return (
     <div className={styles.backdrop} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" aria-label={title}>
+      <div
+        ref={modalRef}
+        className={styles.modal}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
         <h2 className={styles.title}>{title}</h2>
         {children}
       </div>

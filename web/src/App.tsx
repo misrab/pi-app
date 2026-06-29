@@ -2,6 +2,8 @@ import { useState } from "react";
 import { PwaInstall } from "make-pwa";
 import { useSession } from "./hooks/useSession";
 import { useMediaQuery } from "./hooks/useMediaQuery";
+import { accentColorFromTheme } from "./hooks/useAppTheme";
+import { t } from "./lib/i18n";
 import { Header } from "./components/Header";
 import { Toolbar } from "./components/Toolbar";
 import { Transcript } from "./components/Transcript";
@@ -22,14 +24,14 @@ export function App() {
   return (
     <div className={styles.shell}>
       {isDesktop && (
-        <aside className={styles.sidebar} aria-label="Sessions">
+        <aside className={styles.sidebar} aria-label={t("sessionsTitle")}>
           <SessionList session={session} variant="sidebar" />
         </aside>
       )}
 
       <main className={styles.main}>
         <div className={styles.app}>
-          <PwaInstall appName="pi" accentColor="#2dd4bf" />
+          <PwaInstall appName={t("appName")} accentColor={accentColorFromTheme()} />
 
           <Header
             status={session.status}
@@ -75,7 +77,7 @@ export function App() {
           <ModelPicker open={sheet === "model"} onClose={() => setSheet(null)} session={session} />
           <PersonaPicker open={sheet === "persona"} onClose={() => setSheet(null)} session={session} />
           {!isDesktop && (
-            <Sheet open={sheet === "session"} title="Sessions" onClose={() => setSheet(null)}>
+            <Sheet open={sheet === "session"} title={t("sessionsTitle")} onClose={() => setSheet(null)}>
               <SessionList
                 session={session}
                 active={sheet === "session"}

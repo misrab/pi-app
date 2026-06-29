@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import type { Block } from "../hooks/useSession";
+import { useAppTheme } from "../hooks/useAppTheme";
 import { t } from "../lib/i18n";
 import { SkeletonBubble } from "./Skeleton";
 import { PiLogo } from "./PiLogo";
@@ -20,8 +21,13 @@ function CodePre({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) {
   };
   return (
     <div className={styles.codeWrap}>
-      <button className={`${styles.copyBtn} ${copied ? styles.copyDone : ""}`} onClick={copy}>
-        {copied ? "✓" : "Copy"}
+      <button
+        type="button"
+        className={`${styles.copyBtn} ${copied ? styles.copyDone : ""}`}
+        onClick={copy}
+        aria-label={t("copy")}
+      >
+        {copied ? t("copyDone") : t("copy")}
       </button>
       <pre ref={preRef} className={styles.codePre} {...props}>{children}</pre>
     </div>
@@ -46,12 +52,16 @@ const markdownComponents = { pre: CodePre, a: Anchor };
 // permits any image/link src (incl. data: URIs); tighten if untrusted content is
 // ever rendered.
 function StreamMarkdown({ text }: { text: string }) {
+  const theme = useAppTheme();
+  const shikiTheme: [string, string] = theme === "light"
+    ? ["github-light", "github-light"]
+    : ["github-dark", "github-dark"];
   return (
     <Streamdown
       parseIncompleteMarkdown
       animated={false}
       urlTransform={(url) => url}
-      shikiTheme={["github-light", "github-dark"]}
+      shikiTheme={shikiTheme}
       controls={false}
       components={markdownComponents}
       className={styles.markdown}
@@ -97,6 +107,7 @@ function Markdown({ text }: { text: string }) {
 // weight only loads when a diagram actually appears. securityLevel "strict"
 // sanitizes the generated SVG (mitigates the known mermaid label XSS).
 function Mermaid({ code }: { code: string }) {
+  const theme = useAppTheme();
   const [svg, setSvg] = useState("");
   const [error, setError] = useState("");
   useEffect(() => {
@@ -104,7 +115,11 @@ function Mermaid({ code }: { code: string }) {
     void (async () => {
       try {
         const mermaid = (await import("mermaid")).default;
-        mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: theme === "light" ? "default" : "dark",
+          securityLevel: "strict",
+        });
         const id = "m" + Math.random().toString(36).slice(2);
         const { svg } = await mermaid.render(id, code);
         if (alive) setSvg(svg);
@@ -115,11 +130,11 @@ function Mermaid({ code }: { code: string }) {
     return () => {
       alive = false;
     };
-  }, [code]);
+  }, [code, theme]);
   if (error)
     return (
       <pre className={styles.artifactCode}>
-        mermaid error: {error}
+        {t("mermaidError")} {error}
         {"\n\n"}
         {code}
       </pre>
@@ -140,9 +155,9 @@ function Artifact({ lang, code }: { lang: "html" | "svg"; code: string }) {
   return (
     <div className={styles.artifact}>
       <div className={styles.artifactHead}>
-        <span className={styles.artifactLabel}>{lang.toUpperCase()} preview</span>
-        <button className={styles.artifactToggle} onClick={() => setShowCode((s) => !s)}>
-          {showCode ? "Preview" : "Code"}
+        <span className={styles.artifactLabel}>{t("artifactPreview", lang)}</span>
+        <button type="button" className={styles.artifactToggle} onClick={() => setShowCode((s) => !s)}>
+          {showCode ? t("artifactShowPreview") : t("artifactShowCode")}
         </button>
       </div>
       {showCode ? (
@@ -170,7 +185,6 @@ const BOTTOM_THRESHOLD = 80;
 
 export function Transcript({ blocks, streaming, initializing }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
   // Whether auto-scroll is active. Pauses when user scrolls up; resumes when
   // they scroll back down or a new user message starts a fresh turn.
   const autoScrollRef = useRef(true);
@@ -238,7 +252,9 @@ export function Transcript({ blocks, streaming, initializing }: Props) {
           <SkeletonBubble align="right" />
         </>
       )}
-      {!initializing && blocks.length === 0 && <div className={styles.empty}>Start a conversation with pi.</div>}
+      {!initializing && blocks.length === 0 && (
+        <div className={styles.empty}>{t("transcriptEmpty")}</div>
+      )}
       {blocks.map((b, i) => (
         <BlockView key={b.id} block={b} active={streaming && i === blocks.length - 1} />
       ))}
@@ -254,15 +270,14 @@ export function Transcript({ blocks, streaming, initializing }: Props) {
           })()}
         </div>
       )}
-      <div ref={endRef} />
     </div>
     {showJump && (
       <button
         className={styles.jumpBtn}
         onClick={jumpToBottom}
-        aria-label="Jump to latest"
+        aria-label={t("jumpLatestLabel")}
       >
-        ↓ Latest
+        {t("jumpLatest")}
       </button>
     )}
     </div>
@@ -273,11 +288,11 @@ function BlockView({ block, active }: { block: Block; active?: boolean }) {
   switch (block.kind) {
     case "user":
       return (
-        <div className={`${styles.bubble} ${styles.user}`} role="article" aria-label="You">
+        <div className={`${styles.bubble} ${styles.user}`} role="article" aria-label={t("ariaYou")}>
           {block.imageUrls && block.imageUrls.length > 0 && (
             <div className={styles.userImages}>
               {block.imageUrls.map((url, i) => (
-                <img key={i} src={url} alt="attachment" className={styles.userImage} />
+                <img key={i} src={url} alt={t("ariaAttachment")} className={styles.userImage} />
               ))}
             </div>
           )}
@@ -286,7 +301,7 @@ function BlockView({ block, active }: { block: Block; active?: boolean }) {
       );
     case "text":
       return (
-        <div className={styles.assistantRow} role="article" aria-label="pi">
+        <div className={styles.assistantRow} role="article" aria-label={t("ariaPi")}>
           <div className={styles.assistantMark} aria-hidden="true">
             <PiLogo size={18} />
           </div>
@@ -307,7 +322,7 @@ function BlockView({ block, active }: { block: Block; active?: boolean }) {
         </div>
       );
     case "image":
-      return <img src={block.url} alt="Generated image" className={styles.inlineImage} />;
+      return <img src={block.url} alt={t("ariaGeneratedImage")} className={styles.inlineImage} />;
     case "tool":
       return <ToolView block={block} />;
   }
@@ -340,7 +355,7 @@ function ToolView({ block }: { block: Extract<Block, { kind: "tool" }> }) {
       <pre className={styles.toolArgs}>{JSON.stringify(block.args, null, 2)}</pre>
       {block.result !== undefined && (
         <pre className={`${styles.toolResult} ${block.isError ? styles.toolError : ""}`}>
-          {block.result || "(no output)"}
+          {block.result || t("toolNoOutput")}
         </pre>
       )}
     </div>

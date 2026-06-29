@@ -25,7 +25,7 @@ export function Header({ status, sessionName, onOpenSession }: Props) {
   return (
     <header className={styles.header}>
       {onOpenSession && (
-        <button className={styles.menuBtn} onClick={onOpenSession} aria-label="Sessions">
+        <button className={styles.menuBtn} onClick={onOpenSession} aria-label={t("headerMenu")}>
           <MenuIcon />
         </button>
       )}
@@ -33,15 +33,15 @@ export function Header({ status, sessionName, onOpenSession }: Props) {
       <button
         className={`${styles.themeBtn} ${onOpenSession ? styles.themeWithMenu : ""}`}
         onClick={toggleTheme}
-        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-        title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        aria-label={theme === "dark" ? t("themeLight") : t("themeDark")}
+        title={theme === "dark" ? t("themeLight") : t("themeDark")}
       >
         {theme === "dark" ? <SunIcon /> : <MoonIcon />}
       </button>
 
       <div className={styles.center}>
         <PiLogo size={20} aria-hidden />
-        <h1 className={styles.title}>{sessionName ?? "pi"}</h1>
+        <h1 className={styles.title}>{sessionName ?? t("appName")}</h1>
       </div>
 
       <div className={styles.status} role="status">
@@ -52,7 +52,7 @@ export function Header({ status, sessionName, onOpenSession }: Props) {
         )}
         <span
           className={`${styles.dot} ${styles[status]}`}
-          aria-label={`Connection ${status}`}
+          aria-label={t("connectionStatus", status)}
         />
       </div>
     </header>

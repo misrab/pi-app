@@ -239,7 +239,7 @@ export function Composer({
 
       {unsupported.length > 0 && (
         <p className={styles.unsupported}>
-          Can't attach: {unsupported.join(", ")} — images &amp; text files only
+          {t("composerUnsupportedPrefix")} {unsupported.join(", ")} {t("composerUnsupportedSuffix")}
         </p>
       )}
 
@@ -323,7 +323,7 @@ export function Composer({
                 type="button"
                 className={styles.chipRemove}
                 onClick={() => removeAttachment(a.id)}
-                aria-label={`Remove ${a.name}`}
+                aria-label={t("composerRemoveAttachment", a.name)}
               >×</button>
             </div>
           ))}
@@ -334,7 +334,7 @@ export function Composer({
         {dragOver && (
           <div className={styles.dropOverlay}>
             <UploadIcon />
-            <span>Drop to attach</span>
+            <span>{t("composerDropToAttach")}</span>
           </div>
         )}
 
@@ -343,8 +343,8 @@ export function Composer({
           className={styles.iconBtn}
           onClick={() => fileRef.current?.click()}
           disabled={disabled}
-          aria-label="Attach file"
-          title="Attach image or text file"
+          aria-label={t("composerAttachFile")}
+          title={t("composerAttachFileTitle")}
         >
           <PaperclipIcon />
         </button>
@@ -383,13 +383,13 @@ export function Composer({
               className={`${styles.iconBtn} ${speech.listening ? styles.micActive : ""}`}
               onClick={toggleMic}
               disabled={disabled}
-              aria-label={speech.listening ? "Stop dictation" : "Dictate"}
+              aria-label={speech.listening ? t("composerStopDictation") : t("composerDictate")}
             >
               <MicIcon />
             </button>
           )}
           {streaming
-            ? <button type="button" className={`${styles.actionBtn} ${styles.stopBtn}`} onClick={onAbort} aria-label="Stop">
+            ? <button type="button" className={`${styles.actionBtn} ${styles.stopBtn}`} onClick={onAbort} aria-label={t("composerStop")}>
                 <StopIcon />
               </button>
             : <button type="submit" className={`${styles.actionBtn} ${styles.sendBtn}`} disabled={!canSend} aria-label={t("queueSend")} title={t("queueSend")}>

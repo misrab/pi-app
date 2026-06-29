@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Model, ThinkingLevel } from "../api/types";
 import type { Session } from "../hooks/useSession";
 import { trimModelName } from "../lib/fmt";
+import { t } from "../lib/i18n";
 import { Sheet } from "./Sheet";
 import { Skeleton } from "./Skeleton";
 import styles from "./ModelPicker.module.css";
@@ -33,7 +34,7 @@ export function ModelPicker({ open, onClose, session }: Props) {
   }, [open, getAvailableModels]);
 
   return (
-    <Sheet open={open} title="Model" onClose={onClose}>
+    <Sheet open={open} title={t("modelTitle")} onClose={onClose}>
       <ul className={styles.list}>
         {models
           .filter((m) => !enabledModels || enabledModels.includes(`${m.provider}/${m.id}`))
@@ -62,7 +63,7 @@ export function ModelPicker({ open, onClose, session }: Props) {
 
       {model?.reasoning && (
         <div className={styles.thinking}>
-          <div className={styles.thinkingLabel}>Thinking</div>
+          <div className={styles.thinkingLabel}>{t("thinkingSection")}</div>
           <div className={styles.levels}>
             {LEVELS.map((l) => (
               <button

@@ -6,6 +6,7 @@ import { execFile, execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
+import { msg } from "./util.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -31,9 +32,9 @@ const EXCLUDED = new Set(["git", "npm", "bin", "node_modules", "sessions", ".git
 export function resolveConfig(o: ConfigOptions): string {
   if (o.repo) {
     try {
-      sync(o.repo, o.dir, o.githubToken);
+      syncRepo(o.repo, o.dir, o.githubToken);
     } catch (e) {
-      console.warn(`config repo sync failed, using empty dir: ${err(e)}`);
+      console.warn(`config repo sync failed, using empty dir: ${msg(e)}`);
       fs.mkdirSync(o.dir, { recursive: true });
     }
   } else if (o.seed) {
@@ -41,7 +42,7 @@ export function resolveConfig(o: ConfigOptions): string {
     try {
       seedDir(o.seed, o.dir);
     } catch (e) {
-      console.warn(`config seed failed, using empty dir: ${err(e)}`);
+      console.warn(`config seed failed, using empty dir: ${msg(e)}`);
       fs.mkdirSync(o.dir, { recursive: true });
     }
   } else {
@@ -72,7 +73,7 @@ export async function installPackages(agentDir: string, piBin: string): Promise<
     try {
       await execFileAsync(piBin, ["install", pkg], { env });
     } catch (e) {
-      console.warn(`package install failed (${pkg}): ${err(e)}`);
+      console.warn(`package install failed (${pkg}): ${msg(e)}`);
     }
   }
 }
@@ -87,13 +88,14 @@ export function startConfigPoll(o: ConfigOptions, intervalMs: number): void {
     void (async () => {
       try {
         const before = gitHead(o.dir);
-        await syncAsync(o.repo, o.dir, o.githubToken);
+        await syncRepoAsync(o.repo, o.dir, o.githubToken);
         if (gitHead(o.dir) === before) return;
         console.log("config updated, reinstalling packages");
         const agentDir = o.subdir ? path.join(o.dir, o.subdir) : o.dir;
+        overlayAuth(o.authFile, agentDir);
         await installPackages(agentDir, o.piBin);
       } catch (e) {
-        console.warn(`config re-pull failed: ${err(e)}`);
+        console.warn(`config re-pull failed: ${msg(e)}`);
       } finally {
         syncing = false;
       }
@@ -109,7 +111,15 @@ function overlayAuth(src: string, agentDir: string): void {
   console.log(`auth.json overlaid -> ${dst}`);
 }
 
-function sync(repo: string, dir: string, token: string): void {
+function syncRepo(repo: string, dir: string, token: string): void {
+  runGitSync(repo, dir, token);
+}
+
+async function syncRepoAsync(repo: string, dir: string, token: string): Promise<void> {
+  await runGitAsync(repo, dir, token);
+}
+
+function runGitSync(repo: string, dir: string, token: string): void {
   const url = authRepoUrl(repo, token);
   if (fs.existsSync(path.join(dir, ".git"))) {
     if (token) git("-C", dir, "remote", "set-url", "origin", url);
@@ -124,7 +134,7 @@ function sync(repo: string, dir: string, token: string): void {
   git("clone", "--quiet", "--recurse-submodules", url, dir);
 }
 
-async function syncAsync(repo: string, dir: string, token: string): Promise<void> {
+async function runGitAsync(repo: string, dir: string, token: string): Promise<void> {
   const url = authRepoUrl(repo, token);
   if (fs.existsSync(path.join(dir, ".git"))) {
     if (token) await gitAsync("-C", dir, "remote", "set-url", "origin", url);
@@ -170,8 +180,4 @@ function git(...args: string[]): void {
 
 async function gitAsync(...args: string[]): Promise<void> {
   await execFileAsync("git", args);
-}
-
-function err(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
 }

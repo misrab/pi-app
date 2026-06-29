@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "../lib/i18n";
 import { Modal } from "./Modal";
 import styles from "./RenameDialog.module.css";
 
@@ -34,22 +35,22 @@ export function RenameDialog({ open, initial, onClose, onSave }: Props) {
   };
 
   return (
-    <Modal open={open} title="Rename session" onClose={saving ? undefined : onClose}>
+    <Modal open={open} title={t("sessionsRenameDialogTitle")} onClose={saving ? undefined : onClose}>
       <input
         className={styles.input}
         value={name}
         autoFocus
-        placeholder="Session name"
+        placeholder={t("sessionsRenamePlaceholder")}
         disabled={saving}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") void save(); }}
       />
       <div className={styles.actions}>
-        <button className={styles.cancel} onClick={onClose} disabled={saving}>
-          Cancel
+        <button type="button" className={styles.cancel} onClick={onClose} disabled={saving}>
+          {t("cancel")}
         </button>
-        <button className={styles.save} onClick={() => void save()} disabled={saving || !name.trim()}>
-          {saving ? "Saving…" : "Save"}
+        <button type="button" className={styles.save} onClick={() => void save()} disabled={saving || !name.trim()}>
+          {saving ? t("saving") : t("save")}
         </button>
       </div>
     </Modal>

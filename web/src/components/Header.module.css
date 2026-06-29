@@ -111,7 +111,7 @@
   box-shadow: 0 0 6px var(--ok);
 }
 .connecting {
-  background: #eab308;
+  background: var(--warning);
 }
 .closed {
   background: var(--error);
