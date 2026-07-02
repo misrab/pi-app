@@ -238,9 +238,12 @@ export function useSession() {
   const buffer = useRef<Event[]>([]);
   const attachGen = useRef(0);
   const agentEndInFlight = useRef(false);
+  // A message that should be sent the instant the current turn ends because the
+  // user force-sent it (interrupting the running response via abort).
+  const pendingInterrupt = useRef<QueueItem | null>(null);
   const handleAgentEndRef = useRef<() => void>(() => {});
   const onAttachedRef = useRef<() => Promise<void>>(async () => {});
-  const sendPromptNowRef = useRef<(text: string, attachments?: Attachment[], opts?: { streamingBehavior?: "steer" }) => void>(() => {});
+  const sendPromptNowRef = useRef<(text: string, attachments?: Attachment[]) => void>(() => {});
 
   const setQueue = useCallback((updater: QueueItem[] | ((prev: QueueItem[]) => QueueItem[])) => {
     setQueueState((prev) => {
@@ -261,7 +264,7 @@ export function useSession() {
   }, [client]);
 
   const sendPromptNow = useCallback(
-    (text: string, attachments?: Attachment[], opts?: { streamingBehavior?: "steer" }) => {
+    (text: string, attachments?: Attachment[]) => {
       const images: ImageContent[] = (attachments ?? [])
         .filter((a) => a.kind === "image")
         .map((a) => ({ type: "image", data: a.data, mimeType: a.mimeType }));
@@ -284,8 +287,17 @@ export function useSession() {
         type: "prompt",
         message,
         ...(images.length ? { images } : {}),
-        ...(opts?.streamingBehavior ? { streamingBehavior: opts.streamingBehavior } : {}),
       });
+    },
+    [client],
+  );
+
+  // Interrupt the running turn and send `text` as a fresh prompt the moment the
+  // abort lands (handled in handleAgentEnd). Used by force-send.
+  const interruptWith = useCallback(
+    (text: string, attachments?: Attachment[]) => {
+      pendingInterrupt.current = { id: nextQueueId(), text, attachments };
+      client.send({ type: "abort" });
     },
     [client],
   );
@@ -305,7 +317,14 @@ export function useSession() {
     agentEndInFlight.current = true;
     try {
       await Promise.all([refreshStats(), loadMessages()]);
-      flushQueue();
+      // A force-sent (interrupting) message takes priority over the queue.
+      const forced = pendingInterrupt.current;
+      if (forced) {
+        pendingInterrupt.current = null;
+        sendPromptNowRef.current(forced.text, forced.attachments);
+      } else {
+        flushQueue();
+      }
     } finally {
       agentEndInFlight.current = false;
     }
@@ -477,27 +496,33 @@ export function useSession() {
     [state.streaming, sendPromptNow, enqueue],
   );
 
+  // Force-send now: interrupt the running response (abort) and send this
+  // message as the next turn, or send immediately if idle.
   const sendImmediate = useCallback(
     (text: string, attachments?: Attachment[]) => {
-      sendPromptNow(text, attachments, { streamingBehavior: "steer" });
+      if (state.streaming) {
+        interruptWith(text, attachments);
+      } else {
+        sendPromptNow(text, attachments);
+      }
     },
-    [sendPromptNow],
+    [state.streaming, interruptWith, sendPromptNow],
   );
 
-  // Force-send a queued item now: pull it from the queue and steer it into the
-  // running turn (or send normally if idle).
+  // Force-send a queued item now: pull it from the queue and interrupt the
+  // running turn with it (or send normally if idle).
   const sendQueuedNow = useCallback(
     (id: string) => {
       const item = queueRef.current.find((q) => q.id === id);
       if (!item) return;
       setQueue((prev) => prev.filter((q) => q.id !== id));
       if (state.streaming) {
-        sendPromptNow(item.text, item.attachments, { streamingBehavior: "steer" });
+        interruptWith(item.text, item.attachments);
       } else {
         sendPromptNow(item.text, item.attachments);
       }
     },
-    [state.streaming, sendPromptNow, setQueue],
+    [state.streaming, interruptWith, sendPromptNow, setQueue],
   );
 
   const togglePlanMode = useCallback(async () => {
