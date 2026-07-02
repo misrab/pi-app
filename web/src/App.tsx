@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { PwaInstall } from "make-pwa";
 import { useSession } from "./hooks/useSession";
 import { useMediaQuery } from "./hooks/useMediaQuery";
+import { useSidebarWidth } from "./hooks/useSidebarWidth";
 import { accentColorFromTheme } from "./hooks/useAppTheme";
 import { t } from "./lib/i18n";
 import { Header } from "./components/Header";
@@ -20,13 +21,32 @@ export function App() {
   const session = useSession();
   const [sheet, setSheet] = useState<SheetKind>(null);
   const isDesktop = useMediaQuery("(min-width: 900px)");
+  const { width: sidebarWidth, onResizePointerDown, resetWidth } = useSidebarWidth(isDesktop);
+
+  const shellStyle = isDesktop
+    ? ({ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties)
+    : undefined;
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} style={shellStyle}>
       {isDesktop && (
-        <aside className={styles.sidebar} aria-label={t("sessionsTitle")}>
-          <SessionList session={session} variant="sidebar" />
-        </aside>
+        <div className={styles.sidebarWrap}>
+          <aside className={styles.sidebar} aria-label={t("sessionsTitle")}>
+            <SessionList session={session} variant="sidebar" />
+          </aside>
+          <div
+            className={styles.resizeHandle}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={t("sidebarResize")}
+            aria-valuenow={sidebarWidth}
+            aria-valuemin={220}
+            aria-valuemax={480}
+            tabIndex={0}
+            onPointerDown={onResizePointerDown}
+            onDoubleClick={resetWidth}
+          />
+        </div>
       )}
 
       <main className={styles.main}>

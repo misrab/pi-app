@@ -6,7 +6,7 @@
 
 @media (min-width: 900px) {
   .composer {
-    padding: 8px 20px calc(10px + var(--safe-bottom));
+    padding: 8px 0 calc(10px + var(--safe-bottom));
   }
 }
 

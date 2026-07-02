@@ -124,10 +124,15 @@
 
 @media (min-width: 900px) {
   .toolbar {
+    padding: 8px 0;
+  }
+}
+
+@container main (min-width: 520px) {
+  .toolbar {
     flex-direction: row;
     align-items: center;
     gap: 8px;
-    padding: 8px 20px;
   }
 
   .modelRow {
@@ -149,11 +154,22 @@
     justify-content: flex-end;
     flex-shrink: 1;
     min-width: 0;
+    flex-wrap: wrap;
   }
 
   .pill {
     flex: 0 0 auto;
     min-width: auto;
     height: 36px;
+  }
+}
+
+@container main (max-width: 519px) {
+  .controls {
+    flex-wrap: wrap;
+  }
+
+  .pill {
+    flex: 1 1 calc(50% - 3px);
   }
 }

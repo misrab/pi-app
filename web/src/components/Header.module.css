@@ -11,7 +11,7 @@
 
 @media (min-width: 900px) {
   .header {
-    padding: calc(10px + var(--safe-top)) 20px 10px;
+    padding: calc(10px + var(--safe-top)) 0 10px;
   }
 }
 

@@ -38,6 +38,7 @@ const strings = {
   modelTitle: "Model",
   modelNone: "no model",
   sessionsTitle: "Sessions",
+  sidebarResize: "Resize sidebar",
   sessionsNew: "New session",
   sessionsRename: "Rename",
   sessionsRenameCurrent: "Rename current",
