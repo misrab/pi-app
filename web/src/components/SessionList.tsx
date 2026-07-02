@@ -146,17 +146,21 @@ export function SessionList({
                 onClick={() => resume(s.id)}
                 disabled={busy}
               >
-                <span className={styles.name}>
-                  <StatusDot status={s.status} />
-                  {s.name}
-                  {s.status === "running" && (
-                    <span className={styles.runningBadge}>{t("sessionsRunning")}</span>
-                  )}
-                </span>
+                <div className={styles.itemHeader}>
+                  <span className={styles.nameRow}>
+                    <StatusDot status={s.status} />
+                    <span className={styles.name}>{s.name}</span>
+                    {s.status === "running" && (
+                      <span className={styles.runningBadge}>{t("sessionsRunning")}</span>
+                    )}
+                  </span>
+                  <time className={styles.time} dateTime={new Date(s.modified).toISOString()}>
+                    {relativeTime(s.modified)}
+                  </time>
+                </div>
                 {s.preview && s.preview !== s.name && (
                   <span className={styles.preview}>{s.preview}</span>
                 )}
-                <span className={styles.time}>{relativeTime(s.modified)}</span>
               </button>
             </li>
           ))}
