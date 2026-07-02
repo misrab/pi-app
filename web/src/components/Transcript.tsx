@@ -5,6 +5,7 @@ import { useAppTheme } from "../hooks/useAppTheme";
 import { t } from "../lib/i18n";
 import { SkeletonBubble } from "./Skeleton";
 import { PiLogo } from "./PiLogo";
+import { EditDiff } from "./EditDiff";
 import styles from "./Transcript.module.css";
 
 // Custom <pre> renderer — gives us a copy button without Streamdown's
@@ -352,7 +353,11 @@ function ToolView({ block }: { block: Extract<Block, { kind: "tool" }> }) {
           </span>
         )}
       </div>
-      <pre className={styles.toolArgs}>{JSON.stringify(block.args, null, 2)}</pre>
+      {block.name === "edit" || block.name === "write" ? (
+        <EditDiff name={block.name} args={block.args} />
+      ) : (
+        <pre className={styles.toolArgs}>{JSON.stringify(block.args, null, 2)}</pre>
+      )}
       {block.result !== undefined && (
         <pre className={`${styles.toolResult} ${block.isError ? styles.toolError : ""}`}>
           {block.result || t("toolNoOutput")}

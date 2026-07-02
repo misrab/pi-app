@@ -4,11 +4,24 @@ import { t, relativeTime, formatStatTokensTitle } from "../lib/i18n";
 import type { SessionInfo, SessionStats } from "../api/types";
 import type { Session } from "../hooks/useSession";
 import { RenameDialog } from "./RenameDialog";
+import { Modal } from "./Modal";
 import { Skeleton } from "./Skeleton";
 import styles from "./SessionList.module.css";
 
 const POLL_MS = 10_000;
 const PAGE = 20;
+
+async function setPinApi(id: string, pinned: boolean): Promise<void> {
+  await fetch(`/api/sessions/${encodeURIComponent(id)}/pin`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ pinned }),
+  });
+}
+
+async function deleteSessionApi(id: string): Promise<void> {
+  await fetch(`/api/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
 
 interface Props {
   session: Session;
@@ -29,6 +42,8 @@ export function SessionList({
   const [shown, setShown] = useState(PAGE);
   const [renaming, setRenaming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<SessionInfo | null>(null);
   const pollRef = useRef<number | null>(null);
 
   const refresh = (showLoading = false) => {
@@ -80,8 +95,10 @@ export function SessionList({
     );
   }, [list, query]);
 
-  const visible = filtered?.slice(0, shown) ?? null;
-  const hasMore = filtered !== null && filtered.length > shown;
+  const pinned = filtered?.filter((s) => s.pinned) ?? [];
+  const rest = filtered?.filter((s) => !s.pinned) ?? [];
+  const restVisible = rest.slice(0, shown);
+  const hasMore = rest.length > shown;
 
   const start = async () => {
     setBusy(true);
@@ -102,9 +119,76 @@ export function SessionList({
     await refresh();
   };
 
+  const togglePin = async (s: SessionInfo) => {
+    setMenuFor(null);
+    await setPinApi(s.id, !s.pinned);
+    await refresh();
+  };
+
+  const doDelete = async () => {
+    if (!confirmDelete) return;
+    const id = confirmDelete.id;
+    setConfirmDelete(null);
+    setBusy(true);
+    await deleteSessionApi(id);
+    if (id === sessionId) await newSession();
+    await refresh();
+    setBusy(false);
+  };
+
   const renameLabel = sessionName
     ? `${t("sessionsRename")} "${sessionName}"`
     : t("sessionsRenameCurrent");
+
+  const row = (s: SessionInfo) => (
+    <li key={s.id} className={styles.row}>
+      <button
+        className={`${styles.item} ${s.id === sessionId ? styles.active : ""}`}
+        onClick={() => resume(s.id)}
+        disabled={busy}
+      >
+        <div className={styles.itemHeader}>
+          <span className={styles.nameRow}>
+            {s.pinned && <span className={styles.pinDot} aria-hidden>★</span>}
+            <StatusDot status={s.status} />
+            <span className={styles.name}>{s.name}</span>
+            {s.status === "running" && (
+              <span className={styles.runningBadge}>{t("sessionsRunning")}</span>
+            )}
+          </span>
+          <time className={styles.time} dateTime={new Date(s.modified).toISOString()}>
+            {relativeTime(s.modified)}
+          </time>
+        </div>
+        {s.preview && s.preview !== s.name && (
+          <span className={styles.preview}>{s.preview}</span>
+        )}
+      </button>
+      <button
+        className={styles.rowMenuBtn}
+        aria-label={t("sessionsActions")}
+        onClick={() => setMenuFor((cur) => (cur === s.id ? null : s.id))}
+      >
+        ⋯
+      </button>
+      {menuFor === s.id && (
+        <div className={styles.menu} role="menu">
+          <button className={styles.menuItem} onClick={() => togglePin(s)}>
+            {s.pinned ? t("sessionsUnpin") : t("sessionsPin")}
+          </button>
+          <button
+            className={`${styles.menuItem} ${styles.menuDanger}`}
+            onClick={() => {
+              setMenuFor(null);
+              setConfirmDelete(s);
+            }}
+          >
+            {t("sessionsDelete")}
+          </button>
+        </div>
+      )}
+    </li>
+  );
 
   return (
     <>
@@ -121,7 +205,6 @@ export function SessionList({
           </button>
         </div>
 
-        <div className={styles.listLabel}>{t("sessionsResume")}</div>
         <div className={styles.search}>
           <input
             className={styles.searchInput}
@@ -132,56 +215,48 @@ export function SessionList({
             aria-label={t("sessionsSearchPlaceholder")}
           />
         </div>
-        <ul className={styles.list}>
-          {list === null && [1, 2, 3].map((i) => (
-            <li key={i} className={styles.skeletonRow}>
-              <Skeleton width="60%" height="0.9em" />
-              <Skeleton width="85%" height="0.75em" />
-            </li>
-          ))}
-          {visible?.map((s) => (
-            <li key={s.id} className={styles.row}>
-              <button
-                className={`${styles.item} ${s.id === sessionId ? styles.active : ""}`}
-                onClick={() => resume(s.id)}
-                disabled={busy}
-              >
-                <div className={styles.itemHeader}>
-                  <span className={styles.nameRow}>
-                    <StatusDot status={s.status} />
-                    <span className={styles.name}>{s.name}</span>
-                    {s.status === "running" && (
-                      <span className={styles.runningBadge}>{t("sessionsRunning")}</span>
-                    )}
-                  </span>
-                  <time className={styles.time} dateTime={new Date(s.modified).toISOString()}>
-                    {relativeTime(s.modified)}
-                  </time>
-                </div>
-                {s.preview && s.preview !== s.name && (
-                  <span className={styles.preview}>{s.preview}</span>
-                )}
-              </button>
-            </li>
-          ))}
-          {hasMore && (
-            <li>
-              <button
-                className={styles.showMore}
-                onClick={() => setShown((n) => n + PAGE)}
-                disabled={busy}
-              >
-                {t("sessionsShowMore")}
-              </button>
-            </li>
-          )}
-          {filtered !== null && filtered.length === 0 && query.trim() && (
-            <li className={styles.noMatches}>{t("sessionsNoMatches")}</li>
-          )}
-          {list !== null && list.length === 0 && (
-            <li className={styles.empty}>{t("sessionsEmpty")}</li>
-          )}
-        </ul>
+
+        {list === null && (
+          <ul className={styles.list}>
+            {[1, 2, 3].map((i) => (
+              <li key={i} className={styles.skeletonRow}>
+                <Skeleton width="60%" height="0.9em" />
+                <Skeleton width="85%" height="0.75em" />
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {pinned.length > 0 && (
+          <>
+            <div className={styles.listLabel}>{t("sessionsPinned")}</div>
+            <ul className={styles.list}>{pinned.map(row)}</ul>
+          </>
+        )}
+
+        {list !== null && (
+          <>
+            <div className={styles.listLabel}>{t("sessionsResume")}</div>
+            <ul className={styles.list}>
+              {restVisible.map(row)}
+              {hasMore && (
+                <li>
+                  <button
+                    className={styles.showMore}
+                    onClick={() => setShown((n) => n + PAGE)}
+                    disabled={busy}
+                  >
+                    {t("sessionsShowMore")}
+                  </button>
+                </li>
+              )}
+              {filtered !== null && filtered.length === 0 && query.trim() && (
+                <li className={styles.noMatches}>{t("sessionsNoMatches")}</li>
+              )}
+              {list.length === 0 && <li className={styles.empty}>{t("sessionsEmpty")}</li>}
+            </ul>
+          </>
+        )}
       </div>
 
       <RenameDialog
@@ -190,6 +265,22 @@ export function SessionList({
         onClose={() => setRenaming(false)}
         onSave={handleRename}
       />
+
+      <Modal
+        open={confirmDelete !== null}
+        title={t("sessionsDeleteTitle")}
+        onClose={() => setConfirmDelete(null)}
+      >
+        <p className={styles.confirmBody}>{t("sessionsDeleteBody")}</p>
+        <div className={styles.confirmActions}>
+          <button className={styles.secondary} onClick={() => setConfirmDelete(null)}>
+            {t("cancel")}
+          </button>
+          <button className={styles.deleteBtn} onClick={doDelete}>
+            {t("sessionsDelete")}
+          </button>
+        </div>
+      </Modal>
     </>
   );
 }

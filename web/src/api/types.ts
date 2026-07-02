@@ -125,6 +125,20 @@ export interface SessionInfo {
   preview: string;
   status: SessionRunStatus;
   attached: number;
+  pinned: boolean;
+}
+
+export interface DirEntry {
+  name: string;
+  type: "dir" | "file";
+}
+
+export interface FileContent {
+  path: string;
+  binary: boolean;
+  content: string;
+  truncated: boolean;
+  size: number;
 }
 
 // A message loaded from get_messages when resuming a session.

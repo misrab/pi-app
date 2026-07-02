@@ -9,7 +9,9 @@ import { WebSocketServer, type WebSocket } from "ws";
 import { resolveConfig, installPackages, startConfigPoll } from "./config.js";
 import { Manager } from "./manager.js";
 import { handleCommand } from "./rpc.js";
-import { listSessions } from "./sessions.js";
+import { listSessions, deleteSession } from "./sessions.js";
+import { Pins } from "./pins.js";
+import { listDir, readFileText } from "./files.js";
 import { msg } from "./util.js";
 
 const env = (k: string, d = "") => (process.env[k]?.trim() ? process.env[k]!.trim() : d);
@@ -47,6 +49,8 @@ const manager = new Manager({
   idleTTLms: num("PI_IDLE_TTL_MS", 30 * 60_000),
 });
 
+const pins = new Pins(CWD);
+
 // --- HTTP -------------------------------------------------------------------
 
 const server = createServer((req, res) => void handleHttp(req, res));
@@ -58,7 +62,24 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
     if (url.pathname === "/health") return json(res, { healthy: true });
 
     if (url.pathname === "/api/sessions" && req.method === "GET") {
-      return json(res, await listSessions(CWD, manager));
+      return json(res, await listSessions(CWD, manager, pins));
+    }
+    const pinMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)\/pin$/);
+    if (pinMatch && req.method === "POST") {
+      const body = JSON.parse((await readBody(req)) || "{}");
+      pins.set(decodeURIComponent(pinMatch[1]), Boolean(body.pinned));
+      return json(res, { ok: true });
+    }
+    const idMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)$/);
+    if (idMatch && req.method === "DELETE") {
+      const deleted = await deleteSession(CWD, manager, pins, decodeURIComponent(idMatch[1]));
+      return json(res, { ok: true, deleted });
+    }
+    if (url.pathname === "/api/files" && req.method === "GET") {
+      return json(res, await listDir(CWD, url.searchParams.get("path") ?? ""));
+    }
+    if (url.pathname === "/api/file" && req.method === "GET") {
+      return json(res, await readFileText(CWD, url.searchParams.get("path") ?? ""));
     }
     if (url.pathname === "/api/settings" && req.method === "GET") {
       return json(res, readEnabledModels(agentDir));
@@ -77,6 +98,15 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
 function json(res: ServerResponse, body: unknown): void {
   res.writeHead(200, { "content-type": "application/json" });
   res.end(JSON.stringify(body));
+}
+
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let data = "";
+    req.on("data", (c) => (data += c));
+    req.on("end", () => resolve(data));
+    req.on("error", reject);
+  });
 }
 
 function readEnabledModels(dir: string): { enabledModels?: string[] } {

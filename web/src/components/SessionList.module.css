@@ -129,6 +129,80 @@
   display: flex;
   align-items: stretch;
   gap: 4px;
+  position: relative;
+}
+
+.pinDot {
+  color: var(--accent);
+  font-size: 0.8em;
+  margin-right: 2px;
+}
+
+.rowMenuBtn {
+  flex: 0 0 auto;
+  width: 32px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.rowMenuBtn:hover {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.menu {
+  position: absolute;
+  top: 100%;
+  right: 4px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 128px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.menuItem {
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.menuItem:hover {
+  background: var(--panel-2);
+}
+.menuDanger {
+  color: var(--err, #e08a8a);
+}
+
+.confirmBody {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 4px 0 16px;
+}
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.deleteBtn {
+  padding: 8px 16px;
+  border: 1px solid var(--err, #e08a8a);
+  border-radius: 8px;
+  background: color-mix(in srgb, #e08a8a 16%, transparent);
+  color: var(--err, #e08a8a);
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .runningBadge {
