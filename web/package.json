@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "diff": "^7.0.0",
     "make-pwa": "github:misrab/web-kit",
     "mermaid": "^11.15.0",
     "react": "^19.0.0",
@@ -17,6 +18,7 @@
     "streamdown": "^2.5.0"
   },
   "devDependencies": {
+    "@types/diff": "^7.0.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",

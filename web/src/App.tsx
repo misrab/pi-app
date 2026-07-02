@@ -12,10 +12,11 @@ import { Composer } from "./components/Composer";
 import { ModelPicker } from "./components/ModelPicker";
 import { PersonaPicker } from "./components/PersonaPicker";
 import { SessionList } from "./components/SessionList";
+import { FileBrowser } from "./components/FileBrowser";
 import { Sheet } from "./components/Sheet";
 import styles from "./App.module.css";
 
-type SheetKind = "model" | "persona" | "session" | null;
+type SheetKind = "model" | "persona" | "session" | "files" | null;
 
 export function App() {
   const session = useSession();
@@ -57,6 +58,7 @@ export function App() {
             status={session.status}
             sessionName={session.sessionName}
             onOpenSession={!isDesktop ? () => setSheet("session") : undefined}
+            onOpenFiles={() => setSheet("files")}
           />
 
           <Transcript
@@ -105,6 +107,9 @@ export function App() {
               />
             </Sheet>
           )}
+          <Sheet open={sheet === "files"} title={t("filesTitle")} onClose={() => setSheet(null)}>
+            <FileBrowser active={sheet === "files"} />
+          </Sheet>
         </div>
       </main>
     </div>

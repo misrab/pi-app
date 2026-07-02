@@ -1,0 +1,92 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+}
+
+.crumb {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 0.82rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.up,
+.back {
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.back {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono, ui-monospace, monospace);
+}
+.up {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  padding: 9px 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.entry:hover {
+  background: var(--panel-2);
+}
+.entryName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.icon {
+  flex: 0 0 auto;
+}
+
+.viewer {
+  overflow-x: auto;
+}
+
+.note {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 6px;
+}
+.error {
+  color: var(--err, #e08a8a);
+  font-size: 0.85rem;
+  padding: 6px;
+}

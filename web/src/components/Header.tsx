@@ -8,9 +8,10 @@ interface Props {
   status: ConnectionStatus;
   sessionName?: string;
   onOpenSession?: () => void;
+  onOpenFiles?: () => void;
 }
 
-export function Header({ status, sessionName, onOpenSession }: Props) {
+export function Header({ status, sessionName, onOpenSession, onOpenFiles }: Props) {
   const [theme, setTheme] = useState<"dark" | "light">(
     () => (document.documentElement.dataset.theme as "dark" | "light") ?? "dark",
   );
@@ -38,6 +39,17 @@ export function Header({ status, sessionName, onOpenSession }: Props) {
       >
         {theme === "dark" ? <SunIcon /> : <MoonIcon />}
       </button>
+
+      {onOpenFiles && (
+        <button
+          className={styles.themeBtn}
+          onClick={onOpenFiles}
+          aria-label={t("filesOpen")}
+          title={t("filesOpen")}
+        >
+          <FolderIcon />
+        </button>
+      )}
 
       <div className={styles.center}>
         <PiLogo size={20} aria-hidden />
@@ -79,6 +91,14 @@ function MoonIcon() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
     </svg>
   );
 }
