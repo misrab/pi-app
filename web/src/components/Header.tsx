@@ -25,31 +25,33 @@ export function Header({ status, sessionName, onOpenSession, onOpenFiles }: Prop
 
   return (
     <header className={styles.header}>
-      {onOpenSession && (
-        <button className={styles.menuBtn} onClick={onOpenSession} aria-label={t("headerMenu")}>
-          <MenuIcon />
-        </button>
-      )}
+      <div className={styles.left}>
+        {onOpenSession && (
+          <button className={styles.iconBtn} onClick={onOpenSession} aria-label={t("headerMenu")}>
+            <MenuIcon />
+          </button>
+        )}
 
-      <button
-        className={`${styles.themeBtn} ${onOpenSession ? styles.themeWithMenu : ""}`}
-        onClick={toggleTheme}
-        aria-label={theme === "dark" ? t("themeLight") : t("themeDark")}
-        title={theme === "dark" ? t("themeLight") : t("themeDark")}
-      >
-        {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-      </button>
-
-      {onOpenFiles && (
         <button
-          className={styles.themeBtn}
-          onClick={onOpenFiles}
-          aria-label={t("filesOpen")}
-          title={t("filesOpen")}
+          className={styles.iconBtn}
+          onClick={toggleTheme}
+          aria-label={theme === "dark" ? t("themeLight") : t("themeDark")}
+          title={theme === "dark" ? t("themeLight") : t("themeDark")}
         >
-          <FolderIcon />
+          {theme === "dark" ? <SunIcon /> : <MoonIcon />}
         </button>
-      )}
+
+        {onOpenFiles && (
+          <button
+            className={styles.iconBtn}
+            onClick={onOpenFiles}
+            aria-label={t("filesOpen")}
+            title={t("filesOpen")}
+          >
+            <FolderIcon />
+          </button>
+        )}
+      </div>
 
       <div className={styles.center}>
         <PiLogo size={20} aria-hidden />
