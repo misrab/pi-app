@@ -25,8 +25,10 @@ RUN npm ci --omit=dev
 # --- runtime -----------------------------------------------------------------
 # git: HTTPS clone of private .pi config at startup.
 # curl + python3: baseline tools the agent expects for HTTP/data work.
+# tini: PID 1 reaper — node does not waitpid(-1) orphans; without this, bash/git
+# grandchildren accumulate as zombies and eventually fork() fails (EAGAIN).
 FROM node:22-alpine
-RUN apk add --no-cache git curl python3
+RUN apk add --no-cache tini git curl python3
 WORKDIR /app/server
 
 COPY --from=proddeps /app/server/node_modules ./node_modules
@@ -44,4 +46,4 @@ ENV PI_CWD=/data/workspace
 VOLUME /data
 
 EXPOSE 8080
-ENTRYPOINT ["node", "dist/index.js"]
+ENTRYPOINT ["/sbin/tini", "--", "node", "dist/index.js"]
