@@ -166,21 +166,23 @@ export function Composer({
     dictateBase.current = "";
   };
 
-  const submit = () => {
+  /** Queue for later (explicit queue button only). */
+  const queueMessage = () => {
+    if (speech.listening) speech.stop();
+    const trimmed = text.trim();
+    if (!trimmed && !attachments.length) return;
+    onSend(trimmed, attachments.length ? attachments : undefined);
+    resetInput();
+  };
+
+  /** Send now — interrupts a running turn if needed. */
+  const sendNow = () => {
     if (speech.listening) speech.stop();
     const trimmed = text.trim();
     if (!trimmed && !attachments.length) {
       if (!streaming && queue.length > 0) onFlushQueued();
       return;
     }
-    onSend(trimmed, attachments.length ? attachments : undefined);
-    resetInput();
-  };
-
-  const submitImmediate = () => {
-    if (speech.listening) speech.stop();
-    const trimmed = text.trim();
-    if (!trimmed && !attachments.length) return;
     onSendImmediate(trimmed, attachments.length ? attachments : undefined);
     resetInput();
   };
@@ -212,7 +214,7 @@ export function Composer({
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    submit();
+    sendNow();
   };
 
   return (
@@ -352,20 +354,15 @@ export function Composer({
         <textarea
           ref={textareaRef}
           className={styles.textarea}
-          placeholder={streaming ? t("composerPlaceholderQueue") : t("composerPlaceholder")}
+          placeholder={t("composerPlaceholder")}
           rows={1}
           value={text}
           disabled={disabled}
           onChange={(e) => { setText(e.target.value); grow(); }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              submitImmediate();
-              return;
-            }
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              submit();
+              sendNow();
             }
           }}
           onPaste={onPaste}
@@ -401,9 +398,9 @@ export function Composer({
               type="button"
               className={`${styles.actionBtn} ${styles.queueBtn}`}
               disabled={!canSend}
-              onClick={submit}
-              aria-label={t("queueSend")}
-              title={t("queueSend")}
+              onClick={queueMessage}
+              aria-label={t("queueForLater")}
+              title={t("queueForLater")}
             >
               <QueueIcon />
             </button>
