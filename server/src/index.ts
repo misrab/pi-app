@@ -55,11 +55,28 @@ const pins = new Pins(CWD);
 
 const server = createServer((req, res) => void handleHttp(req, res));
 
+function originAllowed(req: IncomingMessage): boolean {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  const host = req.headers.host;
+  if (!host) return false;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<void> {
   try {
     const url = new URL(req.url ?? "/", "http://localhost");
 
     if (url.pathname === "/health") return json(res, { healthy: true });
+
+    if (req.method !== "GET" && req.method !== "HEAD" && !originAllowed(req)) {
+      res.writeHead(403, { "content-type": "text/plain" }).end("forbidden");
+      return;
+    }
 
     if (url.pathname === "/api/sessions" && req.method === "GET") {
       return json(res, await listSessions(CWD, manager, pins));
@@ -226,6 +243,10 @@ const WS_PING_INTERVAL_MS = 30_000;
 wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
   if (manager.isDraining()) {
     ws.close(1012, "server draining");
+    return;
+  }
+  if (!originAllowed(req)) {
+    ws.close(1008, "forbidden origin");
     return;
   }
 
