@@ -1,0 +1,14 @@
+.git
+.github
+web/node_modules
+server/node_modules
+server/dist
+server/public
+.env
+*.env
+!*.env.example
+.DS_Store
+*.log
+.dev-sessions/
+*.tsbuildinfo
+.cursor
