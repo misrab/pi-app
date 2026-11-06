@@ -10,15 +10,14 @@ interface Props {
   children: ReactNode;
 }
 
-/** A mobile-first bottom sheet with backdrop. */
+/** A mobile-first bottom sheet with backdrop. Always renders but hides via CSS to
+ *  preserve child state across open/close transitions. */
 export function Sheet({ open, title, onClose, children }: Props) {
   const sheetRef = useRef<HTMLDivElement>(null);
   useDialogA11y(sheetRef, open, onClose);
 
-  if (!open) return null;
-
   return (
-    <div className={styles.backdrop} onClick={onClose}>
+    <div className={`${styles.backdrop} ${open ? styles.visible : styles.hidden}`} onClick={onClose}>
       <div
         ref={sheetRef}
         className={styles.sheet}
